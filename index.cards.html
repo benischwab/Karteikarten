@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karteikarten</title>
+<style>
+:root{--bg:#eef1f5;--ink:#1c2433;--muted:#5d6779;--card:#fff;--back:#1c2433;--backink:#f3f5f8;--ok:#1f8a5b;--no:#c4452d;--line:#cfd6e0}
+@media (prefers-color-scheme:dark){:root{--bg:#12161e;--ink:#e8ecf2;--muted:#98a2b3;--card:#1d2330;--back:#e8ecf2;--backink:#1c2433;--line:#2c3547}}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:17px/1.5 Georgia,"Times New Roman",serif;display:flex;flex-direction:column;align-items:center;padding:16px}
+main{width:100%;max-width:560px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-family:system-ui,sans-serif;font-size:14px;color:var(--muted)}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:16px}
+.bar i{display:block;height:100%;width:0;background:var(--ok);transition:width .3s}
+.scene{perspective:1200px;height:min(66vh,480px);cursor:pointer}
+.card{position:relative;width:100%;height:100%;transition:transform .45s;transform-style:preserve-3d}
+.card.flip{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;border-radius:14px;padding:24px;display:flex;align-items:safe center;justify-content:center;text-align:left;overflow:auto;white-space:pre-line;font-size:clamp(15px,4.2vw,19px);line-height:1.45;border:1px solid var(--line)}
+.front{background:var(--card)}
+.rear{background:var(--back);color:var(--backink);transform:rotateY(180deg)}
+.hint{text-align:center;font:13px system-ui,sans-serif;color:var(--muted);margin:10px 0 14px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+button{font:600 15px system-ui,sans-serif;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:12px 14px;border-radius:10px;cursor:pointer;flex:1;min-width:90px}
+button:focus-visible,.scene:focus-visible{outline:3px solid #3b82f6;outline-offset:2px}
+button.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+button.no{background:var(--no);border-color:var(--no);color:#fff}
+.tools{margin-top:18px}
+.tools button{font-weight:500;font-size:14px}
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);width:min(520px,92vw)}
+textarea{width:100%;height:200px;font:14px ui-monospace,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
+.done{text-align:center;font-family:system-ui,sans-serif}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <header><span id="count"></span><span id="score"></span></header>
+  <div class="bar"><i id="bar"></i></div>
+  <div class="scene" id="scene" tabindex="0" role="button" aria-label="Karte umdrehen">
+    <div class="card" id="card">
+      <div class="face front" id="front"></div>
+      <div class="face rear" id="rear"></div>
+    </div>
+  </div>
+  <p class="hint">Antippen oder Leertaste zum Umdrehen · Pfeiltasten zum Blättern</p>
+  <div class="row">
+    <button class="no" id="btnNo">Nochmal</button>
+    <button class="ok" id="btnOk">Gewusst</button>
+  </div>
+  <div class="row tools">
+    <button id="btnPrev">Zurück</button>
+    <button id="btnShuffle">Mischen</button>
+    <button id="btnOnly">Nur offene</button>
+    <button id="btnImport">Importieren</button>
+  </div>
+</main>
+
+<dialog id="dlg">
+  <form method="dialog">
+    <p>Füge Karten ein, eine pro Zeile: <b>Frage ; Antwort</b></p>
+    <textarea id="txt" placeholder="Hauptstadt von Frankreich ; Paris"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button id="imp" value="ok">Übernehmen</button>
+      <button value="cancel">Abbrechen</button>
+      <button type="button" id="reset">Zurücksetzen</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="cards.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const KEY_CARDS = "karten-eigene", KEY_KNOWN = "karten-gewusst";
+let all = [], deck = [], i = 0, onlyOpen = false, known = {};
+
+function safeGet(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } }
+function safeSet(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+
+function load(){
+  all = safeGet(KEY_CARDS) || CARDS;
+  known = safeGet(KEY_KNOWN) || {};
+  build();
+}
+function build(){
+  deck = all.filter(c => !(onlyOpen && known[c.f]));
+  i = 0; show();
+}
+function show(){
+  $("card").classList.remove("flip");
+  const k = all.filter(c => known[c.f]).length;
+  $("score").textContent = k + " von " + all.length + " gewusst";
+  $("bar").style.width = (all.length ? k / all.length * 100 : 0) + "%";
+  if(!deck.length){
+    $("count").textContent = "";
+    $("front").innerHTML = '<div class="done">Alles gewusst. Tippe auf „Nur offene“, um wieder alle zu sehen.</div>';
+    $("rear").textContent = ""; return;
+  }
+  const c = deck[i];
+  $("count").textContent = "Karte " + (i+1) + " von " + deck.length;
+  $("front").textContent = c.f;
+  $("rear").textContent = c.a;
+}
+function flip(){ if(deck.length) $("card").classList.toggle("flip"); }
+function go(d){ if(!deck.length) return; i = (i + d + deck.length) % deck.length; show(); }
+function mark(v){
+  if(!deck.length) return;
+  const c = deck[i];
+  if(v) known[c.f] = true; else delete known[c.f];
+  safeSet(KEY_KNOWN, known);
+  if(onlyOpen && v){ deck.splice(i,1); if(i >= deck.length) i = 0; show(); }
+  else go(1);
+}
+
+$("scene").onclick = flip;
+$("btnOk").onclick = () => mark(true);
+$("btnNo").onclick = () => mark(false);
+$("btnPrev").onclick = () => go(-1);
+$("btnShuffle").onclick = () => {
+  for(let n = deck.length - 1; n > 0; n--){ const j = Math.floor(Math.random()*(n+1)); [deck[n],deck[j]] = [deck[j],deck[n]]; }
+  i = 0; show();
+};
+$("btnOnly").onclick = () => {
+  onlyOpen = !onlyOpen;
+  $("btnOnly").textContent = onlyOpen ? "Alle zeigen" : "Nur offene";
+  build();
+};
+$("btnImport").onclick = () => $("dlg").showModal();
+$("dlg").addEventListener("close", () => {
+  if($("dlg").returnValue !== "ok") return;
+  const rows = $("txt").value.split("\n").map(l => l.split(";")).filter(p => p.length >= 2 && p[0].trim())
+    .map(p => ({ f: p[0].trim(), a: p.slice(1).join(";").trim() }));
+  if(rows.length){ all = rows; safeSet(KEY_CARDS, rows); known = {}; safeSet(KEY_KNOWN, known); build(); }
+});
+$("reset").onclick = () => { try { localStorage.removeItem(KEY_CARDS); localStorage.removeItem(KEY_KNOWN); } catch(e){} $("dlg").close("cancel"); load(); };
+document.addEventListener("keydown", e => {
+  if($("dlg").open) return;
+  if(e.key === " " || e.key === "Enter"){ e.preventDefault(); flip(); }
+  else if(e.key === "ArrowRight") go(1);
+  else if(e.key === "ArrowLeft") go(-1);
+});
+load();
+</script>
+</body>
+</html>
