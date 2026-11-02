@@ -848,7 +848,7 @@ const CARD_SCHEMA = {
   }}}
 };
 const AMOUNT = {
-  1: "MENGE – WICHTIG, hat Vorrang vor allem anderen: Erstelle NUR Karten zu Fällen/Sachverhalten und Fragen, die WÖRTLICH auf den Folien stehen (z. B. „Fall:“, „Sachverhalt“, „Frage:“, Übungs- oder Kontrollfragen, Fallbeispiele mit Fragestellung). Erfinde KEINE eigenen Fragen – auch nicht zu Definitionen, Begriffen oder Theorie. Vorderseite: der Fall bzw. die Frage so wie auf der Folie (Sachverhalt vollständig, inkl. Fragestellung). Rückseite: die Lösung aus dem Material (Lösungsfolien, Prüfschema, Randnotizen, Sprechernotizen) – vollständig und gegliedert. Gehören Fall und Lösung über mehrere Folien zusammen, wird daraus EINE Karte. Steht zu einer Frage keine Lösung im Material, beantworte sie knapp und nur aus dem Inhalt der Folien. Enthält dieser Abschnitt gar keine Fälle oder Fragen, gib nur einen Codeblock mit dem Text KEINE FÄLLE aus.",
+  1: "MENGE – WICHTIG, hat Vorrang vor allem anderen: Erstelle NUR Karten zu Fällen/Sachverhalten und Fragen, die WÖRTLICH auf den Folien stehen (z. B. „Fall:“, „Sachverhalt“, „Frage:“, Übungs- oder Kontrollfragen, Fallbeispiele mit Fragestellung). Erfinde KEINE eigenen Fragen – auch nicht zu Definitionen, Begriffen oder Theorie. Vorderseite: der Fall bzw. die Frage so wie auf der Folie (inkl. Fragestellung; nur ein sehr langer Sachverhalt wird nach der Längen-Regel gekürzt). Rückseite: die Lösung aus dem Material (Lösungsfolien, Prüfschema, Randnotizen, Sprechernotizen) – inhaltlich vollständig und gegliedert, nur eine sehr lange Lösung wird nach der Längen-Regel gekürzt. Gehören Fall und Lösung über mehrere Folien zusammen, wird daraus EINE Karte. Steht zu einer Frage keine Lösung im Material, beantworte sie knapp und nur aus dem Inhalt der Folien. Enthält dieser Abschnitt gar keine Fälle oder Fragen, gib nur einen Codeblock mit dem Text KEINE FÄLLE aus.",
   2: "Erstelle pro inhaltlicher Folie etwa 2–5 Karten: zu jedem Begriff, jeder Definition, jedem Artikel, jeder Voraussetzung bzw. jedem Prüfungsschritt, jeder Abgrenzung und jedem Fall/Beispiel eine eigene Karte.",
   3: "Erstelle pro inhaltlicher Folie 4–8 Karten: jedes einzelne Detail (jeder Begriff, jede Voraussetzung, jeder Artikel mit Absatz, jede Ausnahme, jedes Beispiel, jeder Fall mit Lösung) bekommt eine eigene Karte."
 };
@@ -859,6 +859,7 @@ const RULES = `Regeln für jede Karte:
 • Fälle: Sachverhalt + Frage vorne, Lösung mit Begründung hinten.
 • Nur Inhalte aus dem Material, nichts erfinden. Unklare Fragmente sinnvoll zusammenführen statt wörtlich kopieren.
 • Deckblätter, Inhaltsverzeichnisse, Lernziele, Literatur- und Organisationsfolien auslassen.
+• Länge: Nur wenn eine Seite der Karte wirklich zu lang ist (Vorderseite mehr als ca. 80 Wörter, Rückseite mehr als ca. 150 Wörter), kürze sie auf das Wesentliche. Beim Fall bleiben alle für die Lösung relevanten Sachverhaltselemente (Personen, Handlungen, Zeit, Ort, Zahlen, Absicht/Wissen) und die Fragestellung erhalten; bei der Antwort alle Prüfungsschritte, Artikel, Ergebnisse und die tragenden Begründungen. Gestrichen werden nur Füllwörter, Wiederholungen und Nebensächliches – lieber knappe Stichworte und • Aufzählungen als ganze Sätze. Karten, die nicht zu lang sind, bleiben unverändert.
 • Keine doppelten Karten.
 • Deutsch, Schweizer Rechtschreibung (ss statt ß).`;
 
@@ -908,7 +909,7 @@ async function aiCards(units, fileName, opts, progress){
   const size = 5, batches = [];
   for(let n = 0; n < units.length; n += size) batches.push(units.slice(n, n + size));
   const sysCreate = "Du bist Tutor:in an einer Schweizer Rechtsfakultät und erstellst aus Vorlesungsfolien Lern-Karteikarten für die Prüfungsvorbereitung.\n\n" + RULES + "\n\n" + AMOUNT[opts.amount];
-  const sysCheck = "Du bist eine strenge Korrektor:in für Lern-Karteikarten an einer Schweizer Rechtsfakultät. Du erhältst Folien und einen Entwurf von Karteikarten dazu. Prüfe jede Karte gegen die Folien und gib die verbesserte, vollständige Kartenliste zurück:\n• Fachlich falsche oder ungenaue Aussagen korrigieren.\n• Karten, bei denen Vorder- und Rückseite nicht zusammenpassen oder die Frage unklar ist, umschreiben.\n• Überladene Karten aufteilen, doppelte zusammenführen, sinnlose streichen.\n" + (opts.amount === 1 ? "• Karten mit selbst erfundenen Fragen (die nicht als Fall oder Frage auf den Folien stehen) streichen; fehlende Fälle/Fragen der Folien ergänzen.\n\n" : "• Wichtige Inhalte der Folien, zu denen noch keine Karte existiert, als neue Karten ergänzen.\n\n") + RULES + "\n\n" + AMOUNT[opts.amount];
+  const sysCheck = "Du bist eine strenge Korrektor:in für Lern-Karteikarten an einer Schweizer Rechtsfakultät. Du erhältst Folien und einen Entwurf von Karteikarten dazu. Prüfe jede Karte gegen die Folien und gib die verbesserte, vollständige Kartenliste zurück:\n• Fachlich falsche oder ungenaue Aussagen korrigieren.\n• Karten, bei denen Vorder- und Rückseite nicht zusammenpassen oder die Frage unklar ist, umschreiben.\n• Überladene Karten aufteilen, doppelte zusammenführen, sinnlose streichen.\n• Zu lange Karten nach der Längen-Regel kürzen, ohne relevante Fakten, Prüfungsschritte oder Artikel zu verlieren.\n" + (opts.amount === 1 ? "• Karten mit selbst erfundenen Fragen (die nicht als Fall oder Frage auf den Folien stehen) streichen; fehlende Fälle/Fragen der Folien ergänzen.\n\n" : "• Wichtige Inhalte der Folien, zu denen noch keine Karte existiert, als neue Karten ergänzen.\n\n") + RULES + "\n\n" + AMOUNT[opts.amount];
   const steps = batches.length * (opts.review ? 2 : 1);
   let done = 0;
   const tick = () => progress(++done, steps);
@@ -944,8 +945,8 @@ function chatPrompt(us, fileName, amount, n, total, ctx){
     (ctx && ctx.length ? "\n\n--- Folgende Folien NUR als Kontext, falls dort die Lösung zu einem Fall von oben steht (daraus KEINE eigenen Karten erstellen):\n\n" + ctx.map(u => "### " + u.label + (u.title ? ": " + u.title : "") + "\n" + u.body).join("\n\n") : "");
 }
 const checkHint = amount => amount === 1
-  ? "stammt jeder Fall bzw. jede Frage wirklich von den Folien? keine selbst erfundene Frage? ist die Lösung vollständig und richtig? fehlt ein Fall oder eine Frage der Folien?"
-  : "fachlich richtig? passen Frage und Antwort zusammen? fehlt etwas Wichtiges?";
+  ? "stammt jeder Fall bzw. jede Frage wirklich von den Folien? keine selbst erfundene Frage? ist die Lösung vollständig und richtig? fehlt ein Fall oder eine Frage der Folien? sind zu lange Karten gekürzt, ohne dass Wichtiges fehlt?"
+  : "fachlich richtig? passen Frage und Antwort zusammen? fehlt etwas Wichtiges? sind zu lange Karten gekürzt, ohne dass Wichtiges fehlt?";
 const noCases = t => /KEINE\s+F(Ä|AE)LLE/i.test(t || "");
 function readReply(t){
   t = t.replace(/\r/g, "");
