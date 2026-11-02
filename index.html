@@ -11,10 +11,25 @@
 html,body{margin:0;min-height:100%}
 body{background:var(--bg);color:var(--ink);font:17px/1.5 Georgia,"Times New Roman",serif;display:flex;flex-direction:column;align-items:center;padding:16px}
 main{width:100%;max-width:560px}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font-family:system-ui,sans-serif;font-size:14px;color:var(--muted)}
+[hidden]{display:none!important}
+h1{font-size:26px;margin:8px 0 18px}
+h2{font-size:18px;margin:0}
+.folder{margin-bottom:22px}
+.fhead{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:4px;margin-bottom:8px}
+.fhead span{font:13px system-ui,sans-serif;color:var(--muted)}
+.deck{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px;font:inherit;cursor:pointer;color:var(--ink)}
+.deck .t{font-weight:600;font-size:16px}
+.deck .m{font:13px system-ui,sans-serif;color:var(--muted);margin-top:2px}
+.deck .pb{height:4px;background:var(--line);border-radius:2px;margin-top:8px;overflow:hidden}
+.deck .pb i{display:block;height:100%;background:var(--ok)}
+.deck.all{background:transparent;border-style:dashed}
+.msg{font:15px system-ui,sans-serif;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;font-family:system-ui,sans-serif;font-size:14px;color:var(--muted)}
+header button{flex:0 0 auto;min-width:0;padding:6px 10px;font-size:13px}
+#title{font:600 15px system-ui,sans-serif;margin:0 0 10px}
 .bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:16px}
 .bar i{display:block;height:100%;width:0;background:var(--ok);transition:width .3s}
-.scene{perspective:1200px;height:min(66vh,480px);cursor:pointer}
+.scene{perspective:1200px;height:min(62vh,460px);cursor:pointer}
 .card{position:relative;width:100%;height:100%;transition:transform .45s;transform-style:preserve-3d}
 .card.flip{transform:rotateY(180deg)}
 .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:14px;padding:24px;display:flex;align-items:safe center;justify-content:center;text-align:left;overflow:auto;white-space:pre-line;font-size:clamp(15px,4.2vw,19px);line-height:1.45;border:1px solid var(--line)}
@@ -23,20 +38,26 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
 .hint{text-align:center;font:13px system-ui,sans-serif;color:var(--muted);margin:10px 0 14px}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 button{font:600 15px system-ui,sans-serif;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:12px 14px;border-radius:10px;cursor:pointer;flex:1;min-width:90px}
-button:focus-visible,.scene:focus-visible{outline:3px solid #3b82f6;outline-offset:2px}
+button:focus-visible,.scene:focus-visible,.deck:focus-visible{outline:3px solid #3b82f6;outline-offset:2px}
 button.ok{background:var(--ok);border-color:var(--ok);color:#fff}
 button.no{background:var(--no);border-color:var(--no);color:#fff}
 .tools{margin-top:18px}
 .tools button{font-weight:500;font-size:14px}
-dialog{border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);width:min(520px,92vw)}
-textarea{width:100%;height:200px;font:14px ui-monospace,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
 .done{text-align:center;font-family:system-ui,sans-serif}
 @media (prefers-reduced-motion:reduce){.card{transition:none}}
 </style>
 </head>
 <body>
 <main>
-  <header><span id="count"></span><span id="score"></span></header>
+
+<section id="home">
+  <h1>Karteikarten</h1>
+  <div id="list"><p class="msg">Lade Themen …</p></div>
+</section>
+
+<section id="learn" hidden>
+  <header><button id="btnHome">← Übersicht</button><span id="count"></span><span id="score"></span></header>
+  <p id="title"></p>
   <div class="bar"><i id="bar"></i></div>
   <div class="scene" id="scene" tabindex="0" role="button" aria-label="Karte umdrehen">
     <div class="card" id="card">
@@ -53,52 +74,152 @@ textarea{width:100%;height:200px;font:14px ui-monospace,monospace;background:var
     <button id="btnPrev">Zurück</button>
     <button id="btnShuffle">Mischen</button>
     <button id="btnOnly">Nur offene</button>
-    <button id="btnImport">Importieren</button>
+    <button id="btnReset">Fortschritt löschen</button>
   </div>
+</section>
+
 </main>
 
-<dialog id="dlg">
-  <form method="dialog">
-    <p>Füge Karten ein, eine pro Zeile: <b>Frage ; Antwort</b></p>
-    <textarea id="txt" placeholder="Hauptstadt von Frankreich ; Paris"></textarea>
-    <div class="row" style="margin-top:10px">
-      <button id="imp" value="ok">Übernehmen</button>
-      <button value="cancel">Abbrechen</button>
-      <button type="button" id="reset">Zurücksetzen</button>
-    </div>
-  </form>
-</dialog>
-
-<script src="cards.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const KEY_CARDS = "karten-eigene", KEY_KNOWN = "karten-gewusst";
-let all = [], deck = [], i = 0, onlyOpen = false, known = {};
+const BASE = "themen/";
+const KEY_KNOWN = "karten-gewusst-v2";
+
+let folders = [];            // [{name, decks:[{name, path, cards:[{f,a,k}]}]}]
+let cur = null, deck = [], i = 0, onlyOpen = false, known = {};
 
 function safeGet(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } }
 function safeSet(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+const nice = n => n.replace(/\.txt$/i, "").replace(/_/g, " ").trim();
 
-function load(){
-  all = safeGet(KEY_CARDS) || CARDS;
+/* ---------- Karten aus Textdatei lesen ----------
+   Karten werden durch eine Zeile "====" getrennt,
+   Vorder- und Rückseite durch eine Zeile "----".      */
+function parse(text, path){
+  return text.replace(/\r/g, "").split(/^={3,}[ \t]*$/m).map(block => {
+    const parts = block.split(/^-{3,}[ \t]*$/m);
+    if(parts.length < 2) return null;
+    const f = parts[0].trim(), a = parts.slice(1).join("\n").trim();
+    return (f && a) ? { f, a, k: path + "|" + f } : null;
+  }).filter(Boolean);
+}
+
+/* ---------- Ordner und Dateien finden ---------- */
+async function listViaGitHub(){
+  try{
+    const h = location.hostname;
+    if(!h.endsWith(".github.io")) return null;
+    const owner = h.split(".")[0];
+    let repo = location.pathname.split("/").filter(Boolean)[0];
+    if(!repo || /\.html?$/i.test(repo)) repo = h;
+    const top = await (await fetch("https://api.github.com/repos/" + owner + "/" + repo + "/contents/themen")).json();
+    if(!Array.isArray(top)) return null;
+    const map = {};
+    const add = (d, f) => { (map[d] = map[d] || []).push(f); };
+    await Promise.all(top.map(async e => {
+      if(e.type === "file" && /\.txt$/i.test(e.name)) add("", e.name);
+      else if(e.type === "dir"){
+        const sub = await (await fetch(e.url)).json();
+        if(Array.isArray(sub)) sub.forEach(f => { if(f.type === "file" && /\.txt$/i.test(f.name)) add(e.name, f.name); });
+      }
+    }));
+    return Object.keys(map).length ? map : null;
+  }catch(e){ return null; }
+}
+async function listViaIndex(){
+  try{
+    const r = await fetch(BASE + "index.json");
+    return r.ok ? await r.json() : null;
+  }catch(e){ return null; }
+}
+
+async function loadAll(){
+  const map = (await listViaGitHub()) || (await listViaIndex()) || {};
+  const out = [];
+  for(const name of Object.keys(map).sort((a,b) => a.localeCompare(b, "de", {numeric:true}))){
+    const files = map[name].slice().sort((a,b) => a.localeCompare(b, "de", {numeric:true}));
+    const decks = (await Promise.all(files.map(async file => {
+      const path = (name ? name + "/" : "") + file;
+      try{
+        const r = await fetch(BASE + path.split("/").map(encodeURIComponent).join("/"));
+        if(!r.ok) return null;
+        const cards = parse(await r.text(), path);
+        return cards.length ? { name: nice(file), path, cards } : null;
+      }catch(e){ return null; }
+    }))).filter(Boolean);
+    if(decks.length) out.push({ name: name ? nice(name) : "Allgemein", decks });
+  }
+  folders = out;
+}
+
+/* ---------- Übersicht ---------- */
+const countKnown = cards => cards.filter(c => known[c.k]).length;
+
+function deckButton(title, cards, onclick, cls){
+  const b = document.createElement("button");
+  b.className = "deck" + (cls ? " " + cls : "");
+  const k = countKnown(cards);
+  b.innerHTML = '<div class="t"></div><div class="m"></div><div class="pb"><i></i></div>';
+  b.querySelector(".t").textContent = title;
+  b.querySelector(".m").textContent = cards.length + " Karten · " + k + " gewusst";
+  b.querySelector("i").style.width = (cards.length ? k / cards.length * 100 : 0) + "%";
+  b.onclick = onclick;
+  return b;
+}
+
+function renderHome(){
   known = safeGet(KEY_KNOWN) || {};
+  const list = $("list");
+  list.innerHTML = "";
+  if(!folders.length){
+    list.innerHTML = '<p class="msg">Noch keine Karteikarten gefunden. Lege im Repository einen Ordner <b>themen</b> an, darin Unterordner mit .txt-Dateien (siehe themen/Beispiel/Vorlage.txt).</p>';
+    return;
+  }
+  folders.forEach(fo => {
+    const wrap = document.createElement("div");
+    wrap.className = "folder";
+    const total = fo.decks.reduce((n, d) => n + d.cards.length, 0);
+    const head = document.createElement("div");
+    head.className = "fhead";
+    head.innerHTML = "<h2></h2><span></span>";
+    head.querySelector("h2").textContent = fo.name;
+    head.querySelector("span").textContent = fo.decks.length + " Sets · " + total + " Karten";
+    wrap.appendChild(head);
+    fo.decks.forEach(d => wrap.appendChild(deckButton(d.name, d.cards, () => start(d.name, d.cards))));
+    if(fo.decks.length > 1){
+      const all = fo.decks.flatMap(d => d.cards);
+      wrap.appendChild(deckButton("Ganzer Ordner: " + fo.name, all, () => start(fo.name + " (alle)", all), "all"));
+    }
+    list.appendChild(wrap);
+  });
+}
+
+/* ---------- Lernen ---------- */
+function start(title, cards){
+  cur = { title, cards };
+  onlyOpen = false;
+  $("btnOnly").textContent = "Nur offene";
+  $("title").textContent = title;
+  $("home").hidden = true;
+  $("learn").hidden = false;
   build();
 }
 function build(){
-  deck = all.filter(c => !(onlyOpen && known[c.f]));
+  deck = cur.cards.filter(c => !(onlyOpen && known[c.k]));
   i = 0; show();
 }
 function show(){
   $("card").classList.remove("flip");
-  const k = all.filter(c => known[c.f]).length;
-  $("score").textContent = k + " von " + all.length + " gewusst";
-  $("bar").style.width = (all.length ? k / all.length * 100 : 0) + "%";
+  const k = countKnown(cur.cards);
+  $("score").textContent = k + " von " + cur.cards.length + " gewusst";
+  $("bar").style.width = (cur.cards.length ? k / cur.cards.length * 100 : 0) + "%";
   if(!deck.length){
     $("count").textContent = "";
-    $("front").innerHTML = '<div class="done">Alles gewusst. Tippe auf „Nur offene“, um wieder alle zu sehen.</div>';
+    $("front").innerHTML = '<div class="done">Alles gewusst. Tippe auf „Alle zeigen“ oder „Fortschritt löschen“.</div>';
     $("rear").textContent = ""; return;
   }
   const c = deck[i];
-  $("count").textContent = "Karte " + (i+1) + " von " + deck.length;
+  $("count").textContent = (i+1) + " / " + deck.length;
   $("front").textContent = c.f;
   $("rear").textContent = c.a;
 }
@@ -107,7 +228,7 @@ function go(d){ if(!deck.length) return; i = (i + d + deck.length) % deck.length
 function mark(v){
   if(!deck.length) return;
   const c = deck[i];
-  if(v) known[c.f] = true; else delete known[c.f];
+  if(v) known[c.k] = true; else delete known[c.k];
   safeSet(KEY_KNOWN, known);
   if(onlyOpen && v){ deck.splice(i,1); if(i >= deck.length) i = 0; show(); }
   else go(1);
@@ -126,21 +247,21 @@ $("btnOnly").onclick = () => {
   $("btnOnly").textContent = onlyOpen ? "Alle zeigen" : "Nur offene";
   build();
 };
-$("btnImport").onclick = () => $("dlg").showModal();
-$("dlg").addEventListener("close", () => {
-  if($("dlg").returnValue !== "ok") return;
-  const rows = $("txt").value.split("\n").map(l => l.split(";")).filter(p => p.length >= 2 && p[0].trim())
-    .map(p => ({ f: p[0].trim(), a: p.slice(1).join(";").trim() }));
-  if(rows.length){ all = rows; safeSet(KEY_CARDS, rows); known = {}; safeSet(KEY_KNOWN, known); build(); }
-});
-$("reset").onclick = () => { try { localStorage.removeItem(KEY_CARDS); localStorage.removeItem(KEY_KNOWN); } catch(e){} $("dlg").close("cancel"); load(); };
+$("btnReset").onclick = () => {
+  if(!confirm("Fortschritt für dieses Set löschen?")) return;
+  cur.cards.forEach(c => delete known[c.k]);
+  safeSet(KEY_KNOWN, known);
+  build();
+};
+$("btnHome").onclick = () => { $("learn").hidden = true; $("home").hidden = false; renderHome(); };
 document.addEventListener("keydown", e => {
-  if($("dlg").open) return;
+  if($("learn").hidden) return;
   if(e.key === " " || e.key === "Enter"){ e.preventDefault(); flip(); }
   else if(e.key === "ArrowRight") go(1);
   else if(e.key === "ArrowLeft") go(-1);
 });
-load();
+
+loadAll().then(renderHome);
 </script>
 </body>
 </html>
