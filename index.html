@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Karteikarten</title>
+<title>Jus-Lernhilfe</title>
 <style>
 :root{--bg:#eef1f5;--ink:#1c2433;--muted:#5d6779;--card:#fff;--back:#1c2433;--backink:#f3f5f8;--ok:#1f8a5b;--no:#c4452d;--line:#cfd6e0}
 @media (prefers-color-scheme:dark){:root{--bg:#12161e;--ink:#e8ecf2;--muted:#98a2b3;--card:#1d2330;--back:#e8ecf2;--backink:#1c2433;--line:#2c3547}}
@@ -89,6 +89,55 @@ textarea{min-height:110px;resize:vertical}
 #lvl{font:600 13px system-ui,sans-serif;padding:3px 10px;border-radius:20px;color:#fff}
 .card.s1 .face{border-top:6px solid var(--s1)} .card.s2 .face{border-top:6px solid var(--s2)} .card.s3 .face{border-top:6px solid var(--s3)}
 #lvl.s1{background:var(--s1)} #lvl.s2{background:var(--s2)} #lvl.s3{background:var(--s3)}
+.tile{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin:0 0 12px;cursor:pointer;color:var(--ink)}
+.tile .ti{font-size:30px;display:block}
+.tile .tt{font:700 20px Georgia,serif;display:block;margin:4px 0 2px}
+.tile .td{font:14px system-ui,sans-serif;color:var(--muted);display:block}
+header .back{flex:0 0 auto}
+.schTitle{font-size:26px;margin:8px 0 12px;outline:none;border-radius:6px;padding:2px 4px}
+.schTitle:focus{background:var(--card)}
+.sitem{display:flex;gap:8px;margin-bottom:8px}
+.sitem .deck{margin:0;flex:1}
+#schTree{font-family:system-ui,sans-serif}
+.sn{margin:0}
+.sn .sr{display:flex;align-items:flex-start;gap:4px;border-radius:8px}
+.sn .sr:hover{background:color-mix(in srgb,var(--card) 60%,transparent)}
+.sn .mk{flex:0 0 14px;text-align:center;color:var(--muted);padding-top:7px;font-size:12px}
+.sn .tx{flex:1;min-width:0;padding:5px 4px;outline:none;border-radius:6px;word-break:break-word;min-height:1.4em;line-height:1.4}
+.sn .tx:focus{background:var(--card);box-shadow:0 0 0 2px #3b82f6 inset}
+.sn .tx:empty::before{content:"Neuer Punkt";color:var(--muted)}
+.sn .tg,.sn .mn{flex:0 0 34px;min-width:0;height:32px;padding:0;border:0;background:transparent;font-size:15px;color:var(--muted)}
+.sn .tg{visibility:hidden}
+.sn.has > .sr .tg{visibility:visible}
+.sn .bd{margin-left:9px;padding-left:12px;border-left:1px solid var(--line)}
+.sn.closed > .bd{display:none}
+.sn.d0 > .sr .tx{font-weight:700;font-size:17px}
+.sn.d1 > .sr .tx{font-weight:650;font-size:16px}
+.sn.d2 > .sr .tx{font-weight:600;font-size:15px}
+.sn.d3 > .sr .tx,.sn.d4 > .sr .tx,.sn.d5 > .sr .tx{font-size:15px}
+.sn .nt{margin:2px 0 6px 18px;padding:8px 10px;background:var(--card);border:1px solid var(--line);border-left:4px solid #d99a1e;border-radius:8px;font:14px/1.45 system-ui,sans-serif;white-space:pre-wrap;outline:none}
+.sn .nt:empty::before{content:"Notiz …";color:var(--muted)}
+.sn .im{margin:4px 0 8px 18px;display:flex;flex-wrap:wrap;gap:8px}
+.sn .im figure{margin:0;position:relative}
+.sn .im img{max-width:min(100%,520px);max-height:320px;border-radius:8px;border:1px solid var(--line);display:block;cursor:zoom-in;background:#fff}
+.sn .im .rm{position:absolute;top:4px;right:4px;min-width:0;padding:2px 8px;font-size:13px;opacity:.9}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.sheetIn{background:var(--bg);width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:14px 16px 20px;max-height:85vh;overflow:auto}
+.sheetIn p{font:600 14px system-ui,sans-serif;margin:0 0 10px;color:var(--muted)}
+.sheetIn button{display:block;width:100%;margin-bottom:8px;text-align:left}
+#sheetBtns .gal{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+#sheetBtns .gal img{width:96px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:pointer;background:#fff}
+.viewer{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:11;cursor:zoom-out}
+.viewer img{max-width:96vw;max-height:94vh;background:#fff;border-radius:6px}
+@media print{
+  body{background:#fff;color:#000;padding:0}
+  .noprint,#start,#home,#setv,#learn,#edit,#sedit,#sch-list,#sch-new{display:none!important}
+  #sch-doc{display:block!important}
+  .sn.closed > .bd{display:block!important}
+  .sn .tg,.sn .mn{display:none}
+  .sn .nt{border-color:#999;background:#fafafa}
+  main{max-width:none}
+}
 .box{border:1px dashed var(--line);border-radius:10px;padding:4px 14px 14px;margin:18px 0}
 .box h2{font:600 15px system-ui,sans-serif;margin:12px 0 4px}
 .box p{font:13px system-ui,sans-serif;color:var(--muted);margin:4px 0}
@@ -108,7 +157,23 @@ summary{cursor:pointer;font-weight:600}
 <body>
 <main>
 
-<section id="home">
+<section id="start">
+  <h1>Jus-Lernhilfe</h1>
+  <p class="intro">Was möchtest du machen?</p>
+  <button class="tile" id="goKarten">
+    <span class="ti">🗂</span>
+    <span class="tt">Karteikarten</span>
+    <span class="td">Lernen mit 3 Stufen · Karten aus PowerPoint, PDF oder Word erstellen</span>
+  </button>
+  <button class="tile" id="goSchema">
+    <span class="ti">🧭</span>
+    <span class="tt">Prüfungsschemas</span>
+    <span class="td">Aufklappbare Schemas mit Notizen und Bildern · aus Folien, Bildern oder Vorlage erstellen und bearbeiten</span>
+  </button>
+</section>
+
+<section id="home" hidden>
+  <header><button class="back" data-go="">← Start</button></header>
   <h1>Karteikarten</h1>
   <p class="intro">Set antippen zum Lernen. Eigene Karten aus PowerPoint erstellen: „+ Neue Karten“ – gratis, eigene Karten bleiben auf diesem Gerät.</p>
   <div class="row" style="margin-bottom:18px">
@@ -234,6 +299,52 @@ summary{cursor:pointer;font-weight:600}
   <p id="sInfo" class="hint"></p>
 </section>
 
+<section id="sch-list" hidden>
+  <header><button class="back" data-go="">← Start</button></header>
+  <h1>Prüfungsschemas</h1>
+  <p class="intro">Deine Schemas werden auf diesem Gerät gespeichert. Mit „Teilen“ kannst du sie weitergeben.</p>
+  <button class="deck all" id="schNew"><span class="t">+ Neues Schema</span></button>
+  <div id="schItems"></div>
+</section>
+
+<section id="sch-new" hidden>
+  <header><button id="schNewBack">← Schemas</button></header>
+  <h1>Neues Schema</h1>
+  <div class="box">
+    <h2>Aus Datei oder Bildern (gratis mit Claude-Chat)</h2>
+    <p>PowerPoint, PDF, Word oder Fotos/Screenshots von Folien. Claude erstellt daraus ein Prüfungsschema, das du danach frei bearbeiten kannst.</p>
+    <input type="file" id="schFile" accept=".pptx,.pdf,.docx,.txt,.md,image/*" multiple>
+    <div class="row" style="margin-top:8px"><button id="schRead">Datei lesen</button></div>
+    <p id="schStatus" class="status"></p>
+    <div id="schChat" hidden></div>
+  </div>
+  <div class="box">
+    <h2>Mit Vorlage starten</h2>
+    <div id="schTpls"></div>
+  </div>
+  <div class="box">
+    <h2>Geteiltes Schema öffnen</h2>
+    <p>Eine Datei, die jemand mit „Teilen“ geschickt hat (.json).</p>
+    <input type="file" id="schImport" accept=".json,application/json">
+  </div>
+</section>
+
+<section id="sch-doc" hidden>
+  <header class="noprint"><button id="schDocBack">← Schemas</button><span id="schSaved"></span></header>
+  <h1 id="schTitle" class="schTitle" contenteditable="plaintext-only" spellcheck="false"></h1>
+  <div class="row tools noprint" style="margin:0 0 12px">
+    <button id="schOpenAll">Alle aufklappen</button>
+    <button id="schCloseAll">Alle zuklappen</button>
+    <button id="schMore">Teilen · Drucken · Löschen</button>
+  </div>
+  <p class="hint noprint" style="text-align:left">Tippen zum Bearbeiten · ⋯ für Unterpunkt, Notiz, Bild, Verschieben · Tastatur: Enter = neuer Punkt, Tab = einrücken, ⇧Tab = ausrücken</p>
+  <div id="schTree"></div>
+  <div class="row noprint" style="margin-top:12px"><button id="schAddRoot">+ Punkt hinzufügen</button></div>
+</section>
+
+<div id="sheet" class="sheet noprint" hidden><div class="sheetIn"><p id="sheetTitle"></p><div id="sheetBtns"></div><button id="sheetClose">Abbrechen</button></div></div>
+<div id="viewer" class="viewer" hidden><img id="viewerImg" alt=""></div>
+
 </main>
 
 <script>
@@ -250,6 +361,9 @@ let cur = null, deck = [], i = 0;
 
 function safeGet(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } }
 function safeSet(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+// Dateiname ohne Umlaute/Sonderzeichen (manche Browser verwerfen sonst den Namen)
+const fname = n => String(n || "Datei").replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/Ä/g, "Ae").replace(/Ö/g, "Oe").replace(/Ü/g, "Ue").replace(/ß/g, "ss")
+  .normalize("NFKD").replace(/[^\w .-]+/g, " ").trim().replace(/\s+/g, "_").slice(0, 60) || "Datei";
 const nice = n => n.replace(/\.txt$/i, "").replace(/_/g, " ").trim();
 
 /* ---------- Karten aus Textdatei lesen ----------
@@ -398,7 +512,8 @@ function renderHome(){
     list.appendChild(wrap);
   });
 }
-const showOnly = id => ["home", "setv", "learn", "edit", "sedit"].forEach(x => { $(x).hidden = x !== id; });
+const VIEWS = ["start", "home", "setv", "learn", "edit", "sedit", "sch-list", "sch-new", "sch-doc"];
+const showOnly = id => { VIEWS.forEach(x => { $(x).hidden = x !== id; }); window.scrollTo(0, 0); };
 
 /* ---------- Set-Übersicht: Stufen, Lernen, Bearbeiten, Teilen, Löschen ---------- */
 let view = null;   // { title, cards, deck }
@@ -1154,7 +1269,7 @@ $("vDel").onclick = async () => {
 $("vShare").onclick = () => {
   const d = view.deck;
   const text = d.text || d.cards.map(c => c.f + "\n----\n" + c.a).join("\n\n====\n\n");
-  const name = clean(d.name) + ".txt";
+  const name = fname(d.name) + ".txt";
   const file = new File([text + "\n"], name, { type: "text/plain" });
   if(navigator.canShare && navigator.canShare({ files: [file] })){
     navigator.share({ files: [file], title: d.name }).catch(() => {});
@@ -1174,8 +1289,22 @@ $("eSave").onclick = () => save(false);
 $("ePub").onclick = () => save(true);
 $("eDir").addEventListener("input", fillSets);
 
-loadAll().then(renderHome);
+/* ---------- Startseite & Navigation (#karten, #schema) ---------- */
+let loaded = null;
+function route(){
+  const h = location.hash.replace("#", "");
+  if(h === "karten"){ showOnly("home"); (loaded = loaded || loadAll()).then(renderHome); }
+  else if(h === "schema" && window.Schema){ Schema.list(); }
+  else showOnly("start");
+}
+$("goKarten").onclick = () => { location.hash = "karten"; };
+$("goSchema").onclick = () => { location.hash = "schema"; };
+document.querySelectorAll("button.back[data-go]").forEach(b => b.onclick = () => { location.hash = b.dataset.go; });
+window.addEventListener("hashchange", route);
+loaded = loadAll();
 </script>
+<script src="schema.js"></script>
+<script>route();</script>
 </body>
 </html>
 
