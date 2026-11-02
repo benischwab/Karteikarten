@@ -59,6 +59,8 @@ textarea{min-height:110px;resize:vertical}
 .radio label{display:flex;align-items:center;gap:6px;margin:0;font-weight:400}
 .radio input{width:auto}
 input[type=file]{padding:8px}
+select{width:100%;font:15px system-ui,sans-serif;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
+#aiOpts label[for]{margin-top:6px}
 details{font:14px system-ui,sans-serif;margin:14px 0}
 summary{cursor:pointer;font-weight:600}
 .status{font:14px system-ui,sans-serif;margin:8px 0;min-height:1em}
@@ -124,8 +126,18 @@ summary{cursor:pointer;font-weight:600}
       <p>PowerPoint (.pptx), PDF, Word (.docx) oder Text. Die Karten landen unten in der Liste – dort prüfen, bearbeiten, dann speichern.</p>
       <input type="file" id="iFile" accept=".pptx,.pdf,.docx,.txt,.md">
       <div class="radio">
-        <label><input type="radio" name="iMode" value="slides" checked> Eine Karte pro Folie</label>
-        <label><input type="radio" name="iMode" value="ai"> Mit KI (Claude) Fragen erstellen</label>
+        <label><input type="radio" name="iMode" value="ai" checked> Mit KI: sinnvolle Fragen &amp; Antworten (empfohlen)</label>
+        <label><input type="radio" name="iMode" value="slides"> Ohne KI: Folientext 1:1 übernehmen</label>
+      </div>
+      <div id="aiOpts">
+        <label for="iAmount">Wie viele Karten?</label>
+        <select id="iAmount">
+          <option value="1">Kompakt – nur das Wichtigste</option>
+          <option value="2" selected>Ausführlich – alle Begriffe, Voraussetzungen, Fälle</option>
+          <option value="3">Sehr ausführlich – jedes Detail einzeln abfragen</option>
+        </select>
+        <div class="radio"><label><input type="checkbox" id="iReview" checked> KI kontrolliert die Karten in einem zweiten Durchgang und korrigiert sie</label></div>
+        <p id="aiHint"></p>
       </div>
       <div class="row"><button id="iGo">Karten erzeugen</button></div>
       <p id="iStatus" class="status"></p>
@@ -402,7 +414,7 @@ function openEdit(){
   $("repoBox").hidden = !!r;
   if(!r) $("repo").value = safeGet(KEY_REPO) || "";
   else fetch("https://api.github.com/repos/" + r.owner + "/" + r.repo).then(x => x.json()).then(j => { if(j && j.default_branch) branch = j.default_branch; }).catch(() => {});
-  fillSets(); renderPend(); loadSettings();
+  fillSets(); renderPend(); loadSettings(); aiUi();
 }
 function copyText(t){
   try{ navigator.clipboard.writeText(t).catch(() => {}); }catch(e){}
@@ -577,47 +589,100 @@ function readText(t){
   });
 }
 
-/* ---------- Karten mit Claude erzeugen ---------- */
-async function aiCards(units, fileName){
-  const key = safeGet(KEY_AI);
-  if(!key) throw new Error("Für „Mit KI“ zuerst unter Einstellungen einen Claude API-Schlüssel eintragen.");
-  const material = units.map(u => "### " + u.label + (u.title ? ": " + u.title : "") + "\n" + u.body).join("\n\n");
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": key,
-      "anthropic-version": "2026-10-21",
-      "anthropic-beta": "server-side-fallback-2026-07-01",
-      "anthropic-dangerous-direct-browser-access": "true"
-    },
-    body: JSON.stringify({
-      model: "claude-opus-5-5",
-      max_tokens: 16000,
-      fallbacks: "default",
-      output_config: {
-        effort: "medium",
-        format: { type: "json_schema", schema: {
-          type: "object", additionalProperties: false, required: ["cards"],
-          properties: { cards: { type: "array", items: {
-            type: "object", additionalProperties: false, required: ["front", "back"],
-            properties: { front: { type: "string" }, back: { type: "string" } }
-          }}}
-        }}
+/* ---------- Karten mit Claude erzeugen ----------
+   1. Folien werden in Abschnitte zu je 5 Folien aufgeteilt (mehr Karten, kein Abbruch bei grossen Dateien)
+   2. Pro Abschnitt erstellt Claude Karten
+   3. Optional: zweiter Durchgang – Claude prüft die Karten gegen die Folien und korrigiert/ergänzt sie   */
+const CARD_SCHEMA = {
+  type: "object", additionalProperties: false, required: ["cards"],
+  properties: { cards: { type: "array", items: {
+    type: "object", additionalProperties: false, required: ["front", "back"],
+    properties: { front: { type: "string" }, back: { type: "string" } }
+  }}}
+};
+const AMOUNT = {
+  1: "Erstelle pro inhaltlicher Folie etwa 1–2 Karten zu den wichtigsten Punkten.",
+  2: "Erstelle pro inhaltlicher Folie etwa 2–5 Karten: zu jedem Begriff, jeder Definition, jedem Artikel, jeder Voraussetzung bzw. jedem Prüfungsschritt, jeder Abgrenzung und jedem Fall/Beispiel eine eigene Karte.",
+  3: "Erstelle pro inhaltlicher Folie 4–8 Karten: jedes einzelne Detail (jeder Begriff, jede Voraussetzung, jeder Artikel mit Absatz, jede Ausnahme, jedes Beispiel, jeder Fall mit Lösung) bekommt eine eigene Karte."
+};
+const RULES = `Regeln für jede Karte:
+• Vorderseite: EINE klare, eigenständige Frage (oder ein kurzer Fall mit Frage), die man ohne die Folie versteht. Kein blosser Folientitel, keine Stichworte.
+• Rückseite: beantwortet genau diese Frage – vollständig, prüfungstauglich, gut gegliedert (Zeilenumbrüche, • Aufzählungen, Prüfschema mit 1./2./3.), mit Artikeln (z. B. Art. 16 Abs. 2 StGB) und Fachbegriffen aus dem Material.
+• Vorder- und Rückseite dürfen sich nicht wiederholen; die Antwort steht nur hinten.
+• Fälle: Sachverhalt + Frage vorne, Lösung mit Begründung hinten.
+• Nur Inhalte aus dem Material, nichts erfinden. Unklare Fragmente sinnvoll zusammenführen statt wörtlich kopieren.
+• Deckblätter, Inhaltsverzeichnisse, Lernziele, Literatur- und Organisationsfolien auslassen.
+• Keine doppelten Karten.
+• Deutsch, Schweizer Rechtschreibung (ss statt ß).`;
+
+async function claude(key, system, user, effort){
+  for(let attempt = 0; ; attempt++){
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": "2026-10-21",
+        "anthropic-beta": "server-side-fallback-2026-07-01",
+        "anthropic-dangerous-direct-browser-access": "true"
       },
-      system: "Du erstellst Lern-Karteikarten auf Deutsch (Schweizer Rechtschreibung, ss statt ß) aus Vorlesungsunterlagen. Vorderseite: eine konkrete Frage oder ein kurzer Fall. Rückseite: die vollständige, prüfungstaugliche Antwort, gegliedert mit Zeilenumbrüchen und • Aufzählungen, mit den genannten Artikeln und Fachbegriffen. Nur Inhalte aus dem Material verwenden, nichts erfinden. Deckblätter, Gliederungs- und Organisationsfolien auslassen. Lieber mehrere präzise Karten als eine überladene.",
-      messages: [{ role: "user", content: "Datei: " + fileName + "\n\nErstelle Karteikarten aus diesem Material:\n\n" + material }]
-    })
-  });
-  const j = await r.json().catch(() => ({}));
-  if(!r.ok){
-    const m = j.error && j.error.message || ("Fehler " + r.status);
-    throw new Error(r.status === 401 ? "Claude API-Schlüssel ungültig." : "Claude: " + m);
+      body: JSON.stringify({
+        model: "claude-opus-5-5",
+        max_tokens: 32000,
+        fallbacks: "default",
+        output_config: { effort, format: { type: "json_schema", schema: CARD_SCHEMA } },
+        system,
+        messages: [{ role: "user", content: user }]
+      })
+    });
+    const j = await r.json().catch(() => ({}));
+    if((r.status === 429 || r.status >= 500) && attempt < 4){
+      const wait = (+r.headers.get("retry-after") || [5, 15, 30, 60][attempt]) * 1000;
+      await new Promise(ok => setTimeout(ok, wait));
+      continue;
+    }
+    if(!r.ok){
+      const m = j.error && j.error.message || ("Fehler " + r.status);
+      if(r.status === 401) throw new Error("Claude API-Schlüssel ungültig.");
+      if(/credit|billing|balance/i.test(m)) throw new Error("Claude: kein Guthaben – auf console.anthropic.com unter Billing aufladen.");
+      throw new Error("Claude: " + m);
+    }
+    if(j.stop_reason === "refusal") throw new Error("Claude hat die Anfrage abgelehnt.");
+    if(j.stop_reason === "max_tokens") throw new Error("Antwort zu lang – bitte „Kompakt“ wählen oder Datei aufteilen.");
+    const txt = (j.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+    return JSON.parse(txt).cards.map(c => ({ f: c.front.trim(), a: c.back.trim() })).filter(c => c.f && c.a);
   }
-  if(j.stop_reason === "refusal") throw new Error("Claude hat die Anfrage abgelehnt.");
-  if(j.stop_reason === "max_tokens") throw new Error("Datei zu gross für einen Durchgang – bitte in kleinere Teile aufteilen.");
-  const txt = (j.content || []).filter(b => b.type === "text").map(b => b.text).join("");
-  return JSON.parse(txt).cards.map(c => ({ f: c.front.trim(), a: c.back.trim() })).filter(c => c.f && c.a);
+}
+
+async function aiCards(units, fileName, opts, progress){
+  const key = safeGet(KEY_AI);
+  if(!key) throw new Error("Für „Mit KI“ zuerst unten unter „Einstellungen“ einen Claude API-Schlüssel eintragen (oder „Ohne KI“ wählen).");
+  const fmt = us => us.map(u => "### " + u.label + (u.title ? ": " + u.title : "") + "\n" + u.body).join("\n\n");
+  const size = 5, batches = [];
+  for(let n = 0; n < units.length; n += size) batches.push(units.slice(n, n + size));
+  const sysCreate = "Du bist Tutor:in an einer Schweizer Rechtsfakultät und erstellst aus Vorlesungsfolien Lern-Karteikarten für die Prüfungsvorbereitung.\n\n" + RULES + "\n\n" + AMOUNT[opts.amount];
+  const sysCheck = "Du bist eine strenge Korrektor:in für Lern-Karteikarten an einer Schweizer Rechtsfakultät. Du erhältst Folien und einen Entwurf von Karteikarten dazu. Prüfe jede Karte gegen die Folien und gib die verbesserte, vollständige Kartenliste zurück:\n• Fachlich falsche oder ungenaue Aussagen korrigieren.\n• Karten, bei denen Vorder- und Rückseite nicht zusammenpassen oder die Frage unklar ist, umschreiben.\n• Überladene Karten aufteilen, doppelte zusammenführen, sinnlose streichen.\n• Wichtige Inhalte der Folien, zu denen noch keine Karte existiert, als neue Karten ergänzen.\n\n" + RULES + "\n\n" + AMOUNT[opts.amount];
+  const steps = batches.length * (opts.review ? 2 : 1);
+  let done = 0;
+  const tick = () => progress(++done, steps);
+  const results = new Array(batches.length);
+  let next = 0;
+  async function worker(){
+    while(next < batches.length){
+      const n = next++, mat = fmt(batches[n]);
+      const ctx = "Datei: " + fileName + " (Abschnitt " + (n+1) + " von " + batches.length + ")\n\nFolien:\n\n" + mat;
+      let cards = await claude(key, sysCreate, ctx + "\n\nErstelle die Karteikarten zu diesen Folien.", "high");
+      tick();
+      if(opts.review && cards.length){
+        cards = await claude(key, sysCheck, ctx + "\n\nEntwurf der Karteikarten (JSON):\n" + JSON.stringify(cards.map(c => ({ front: c.f, back: c.a })), null, 1) + "\n\nGib die geprüfte und verbesserte Kartenliste zurück.", "high");
+        tick();
+      }else if(opts.review) tick();
+      results[n] = cards;
+    }
+  }
+  await Promise.all([worker(), worker(), worker()]);
+  const seen = new Set();
+  return results.flat().filter(c => { const k = c.f.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; });
 }
 
 async function importFile(){
@@ -646,8 +711,11 @@ async function importFile(){
       units = units.filter(u => (u.title + u.body).trim());
       if(!units.length) throw new Error("Kein Text gefunden (evtl. nur Bilder/gescannt).");
       if(mode === "ai"){
-        st.textContent = "Claude erstellt Karten aus " + units.length + " Folien/Seiten … (kann 1–2 Minuten dauern)";
-        cards = await aiCards(units, file.name);
+        const opts = { amount: +$("iAmount").value, review: $("iReview").checked };
+        st.textContent = "Claude liest " + units.length + " Folien/Seiten …";
+        cards = await aiCards(units, file.name, opts, (d, t) => {
+          st.textContent = "Claude arbeitet … " + Math.round(d / t * 100) + " % (" + d + " von " + t + " Schritten" + (opts.review ? ", inkl. Kontrolle" : "") + ")";
+        });
       }else{
         cards = units.filter(u => u.title && u.body && !u.cover).map(u => ({ f: u.title, a: u.body }));
       }
@@ -678,9 +746,16 @@ $("setSave").onclick = () => {
   const rm = x => { try{ localStorage.removeItem(x); }catch(e){} };
   t ? safeSet(KEY_TOK, t) : rm(KEY_TOK);
   k ? safeSet(KEY_AI, k) : rm(KEY_AI);
+  aiUi();
   $("eInfo").textContent = "Einstellungen gespeichert." + (t ? " Speichern geht jetzt direkt." : "");
 };
-$("setClear").onclick = () => { try{ localStorage.removeItem(KEY_TOK); localStorage.removeItem(KEY_AI); }catch(e){} loadSettings(); $("eInfo").textContent = "Token und Schlüssel gelöscht."; };
+$("setClear").onclick = () => { try{ localStorage.removeItem(KEY_TOK); localStorage.removeItem(KEY_AI); }catch(e){} loadSettings(); aiUi(); $("eInfo").textContent = "Token und Schlüssel gelöscht."; };
+function aiUi(){
+  const ai = document.querySelector('input[name="iMode"]:checked').value === "ai";
+  $("aiOpts").hidden = !ai;
+  $("aiHint").textContent = safeGet(KEY_AI) ? "" : "Noch kein Claude API-Schlüssel eingetragen – unten unter „Einstellungen“ eintragen.";
+}
+document.querySelectorAll('input[name="iMode"]').forEach(r => r.addEventListener("change", aiUi));
 $("iGo").onclick = importFile;
 $("eNewDir").onclick = newDir;
 $("btnNewDir").onclick = newDir;
