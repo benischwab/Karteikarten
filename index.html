@@ -52,6 +52,13 @@ textarea{min-height:110px;resize:vertical}
 .pend li{margin-bottom:6px}
 .pend button{min-width:0;flex:0 0 auto;padding:2px 8px;margin-left:6px;font-size:13px}
 #eInfo a{color:inherit}
+.intro{font:14px system-ui,sans-serif;color:var(--muted);margin:-8px 0 14px}
+.part{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0;background:var(--card)}
+.part b{font:600 14px system-ui,sans-serif}
+.part textarea{min-height:70px;margin-top:8px}
+.part.done{border-color:var(--ok)}
+.part .status{margin:6px 0 0}
+.deck .m .loc{color:var(--ok)}
 .box{border:1px dashed var(--line);border-radius:10px;padding:4px 14px 14px;margin:18px 0}
 .box h2{font:600 15px system-ui,sans-serif;margin:12px 0 4px}
 .box p{font:13px system-ui,sans-serif;color:var(--muted);margin:4px 0}
@@ -73,6 +80,7 @@ summary{cursor:pointer;font-weight:600}
 
 <section id="home">
   <h1>Karteikarten</h1>
+  <p class="intro">Set antippen zum Lernen. Eigene Karten aus PowerPoint erstellen: „+ Neue Karten“ – gratis, eigene Karten bleiben auf diesem Gerät.</p>
   <div class="row" style="margin-bottom:18px">
     <button id="btnNew" class="deck all" style="margin:0"><span class="t">+ Neue Karten / Datei importieren</span></button>
     <button id="btnNewDir" class="deck all" style="margin:0;flex:0 1 40%"><span class="t">+ Neuer Ordner</span></button>
@@ -101,6 +109,10 @@ summary{cursor:pointer;font-weight:600}
     <button id="btnOnly">Nur offene</button>
     <button id="btnReset">Fortschritt löschen</button>
   </div>
+  <div class="row tools" style="margin-top:8px">
+    <button id="btnShare">Set teilen (Datei)</button>
+    <button id="btnDel" hidden>Set löschen</button>
+  </div>
 </section>
 
 <section id="edit" hidden>
@@ -123,11 +135,12 @@ summary{cursor:pointer;font-weight:600}
 
     <div class="box">
       <h2>Aus Datei erstellen</h2>
-      <p>PowerPoint (.pptx), PDF, Word (.docx) oder Text. Die Karten landen unten in der Liste – dort prüfen, bearbeiten, dann speichern.</p>
+      <p>PowerPoint (.pptx), PDF, Word (.docx) oder eine geteilte Karten-Datei (.txt). Die Karten landen unten in der Liste – dort prüfen, bearbeiten, dann speichern.</p>
       <input type="file" id="iFile" accept=".pptx,.pdf,.docx,.txt,.md">
       <div class="radio">
-        <label><input type="radio" name="iMode" value="ai" checked> Mit KI: sinnvolle Fragen &amp; Antworten (empfohlen)</label>
-        <label><input type="radio" name="iMode" value="slides"> Ohne KI: Folientext 1:1 übernehmen</label>
+        <label><input type="radio" name="iMode" value="chat" checked> Gratis mit Claude-Chat (empfohlen)</label>
+        <label><input type="radio" name="iMode" value="ai"> Automatisch mit eigenem API-Schlüssel</label>
+        <label><input type="radio" name="iMode" value="slides"> Ohne KI: Folientext 1:1</label>
       </div>
       <div id="aiOpts">
         <label for="iAmount">Wie viele Karten?</label>
@@ -136,11 +149,12 @@ summary{cursor:pointer;font-weight:600}
           <option value="2" selected>Ausführlich – alle Begriffe, Voraussetzungen, Fälle</option>
           <option value="3">Sehr ausführlich – jedes Detail einzeln abfragen</option>
         </select>
-        <div class="radio"><label><input type="checkbox" id="iReview" checked> KI kontrolliert die Karten in einem zweiten Durchgang und korrigiert sie</label></div>
+        <div class="radio" id="reviewRow"><label><input type="checkbox" id="iReview" checked> KI kontrolliert die Karten in einem zweiten Durchgang und korrigiert sie</label></div>
         <p id="aiHint"></p>
       </div>
       <div class="row"><button id="iGo">Karten erzeugen</button></div>
       <p id="iStatus" class="status"></p>
+      <div id="chatBox" hidden></div>
     </div>
 
     <label for="eF">Vorderseite</label>
@@ -149,16 +163,15 @@ summary{cursor:pointer;font-weight:600}
     <textarea id="eA"></textarea>
     <div class="row" style="margin-top:10px"><button id="eAdd">Karte zur Liste hinzufügen</button></div>
     <ol id="pend" class="pend"></ol>
-    <div class="row"><button class="ok" id="eSave">Auf GitHub speichern</button></div>
+    <div class="row"><button class="ok" id="eSave">Speichern</button></div>
     <p id="eInfo" class="hint"></p>
-    <textarea id="eCopy" hidden readonly></textarea>
 
     <details>
-      <summary>Einstellungen (Direkt-Upload &amp; KI)</summary>
-      <label for="ghTok">GitHub-Token (für direktes Speichern ohne GitHub-Seite)</label>
+      <summary>Einstellungen für Fortgeschrittene</summary>
+      <label for="ghTok">GitHub-Token (nur Admin: Karten für alle veröffentlichen)</label>
       <input id="ghTok" type="password" autocomplete="off" placeholder="github_pat_…">
-      <p class="hint" style="text-align:left">Fine-grained Token, nur für dieses Repository, Recht „Contents: Read and write“. Ohne Token öffnet sich wie bisher GitHub zum Bestätigen.</p>
-      <label for="aiKey">Claude API-Schlüssel (nur für „Mit KI“)</label>
+      <p class="hint" style="text-align:left">Ohne Token werden neue Karten nur auf diesem Gerät gespeichert.</p>
+      <label for="aiKey">Claude API-Schlüssel (nur für „Automatisch“, kostenpflichtig)</label>
       <input id="aiKey" type="password" autocomplete="off" placeholder="sk-ant-…">
       <p class="hint" style="text-align:left">Beide werden nur in diesem Browser gespeichert. Nur auf eigenen Geräten eintragen.</p>
       <div class="row"><button id="setSave">Speichern</button><button id="setClear">Löschen</button></div>
@@ -173,7 +186,9 @@ const $ = id => document.getElementById(id);
 const BASE = "themen/";
 const KEY_KNOWN = "karten-gewusst-v2";
 
-let folders = [];            // [{name, decks:[{name, path, cards:[{f,a,k}]}]}]
+let folders = [];            // [{name, dir, decks:[{name, path, cards:[{f,a,k}], local?}]}]
+let remote = [];             // Karten aus dem Repository (für alle sichtbar)
+const KEY_LOCAL = "karten-eigene-v1";   // { "Ordner/Set": "Kartentext" } – nur auf diesem Gerät
 let cur = null, deck = [], i = 0, onlyOpen = false, known = {};
 
 function safeGet(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } }
@@ -237,19 +252,37 @@ async function loadAll(){
     }))).filter(Boolean);
     if(decks.length) out.push({ name: name ? nice(name) : "Allgemein", dir: name, decks });
   }
+  remote = out;
+  rebuild();
+}
+// GitHub-Karten + eigene Karten dieses Geräts zusammenführen
+function rebuild(){
+  const out = remote.map(fo => ({ ...fo, decks: fo.decks.slice() }));
+  const loc = safeGet(KEY_LOCAL) || {};
+  Object.keys(loc).sort((a,b) => a.localeCompare(b, "de", {numeric:true})).forEach(id => {
+    const [dir, set] = id.split("/");
+    const path = "lokal/" + id + ".txt";
+    const cards = parse(loc[id], path);
+    if(!cards.length) return;
+    let fo = out.find(x => x.dir.toLowerCase() === dir.toLowerCase());
+    if(!fo){ fo = { name: nice(dir), dir, decks: [] }; out.push(fo); }
+    fo.decks.push({ name: nice(set), path, cards, local: id, text: loc[id] });
+  });
+  out.sort((a,b) => a.name.localeCompare(b.name, "de", {numeric:true}));
   folders = out;
 }
 
 /* ---------- Übersicht ---------- */
 const countKnown = cards => cards.filter(c => known[c.k]).length;
 
-function deckButton(title, cards, onclick, cls){
+function deckButton(title, cards, onclick, cls, local){
   const b = document.createElement("button");
   b.className = "deck" + (cls ? " " + cls : "");
   const k = countKnown(cards);
   b.innerHTML = '<div class="t"></div><div class="m"></div><div class="pb"><i></i></div>';
   b.querySelector(".t").textContent = title;
   b.querySelector(".m").textContent = cards.length + " Karten · " + k + " gewusst";
+  if(local){ const l = document.createElement("span"); l.className = "loc"; l.textContent = " · eigene (dieses Gerät)"; b.querySelector(".m").appendChild(l); }
   b.querySelector("i").style.width = (cards.length ? k / cards.length * 100 : 0) + "%";
   b.onclick = onclick;
   return b;
@@ -260,7 +293,7 @@ function renderHome(){
   const list = $("list");
   list.innerHTML = "";
   if(!folders.length){
-    list.innerHTML = '<p class="msg">Noch keine Karteikarten gefunden. Lege im Repository einen Ordner <b>themen</b> an, darin Unterordner mit .txt-Dateien (siehe themen/Beispiel/Vorlage.txt).</p>';
+    list.innerHTML = '<p class="msg">Noch keine Karteikarten gefunden. Tippe auf „+ Neue Karten“, um welche aus einer PowerPoint zu erstellen.</p>';
     return;
   }
   folders.forEach(fo => {
@@ -273,7 +306,7 @@ function renderHome(){
     head.querySelector("h2").textContent = fo.name;
     head.querySelector("span").textContent = fo.decks.length + " Sets · " + total + " Karten";
     wrap.appendChild(head);
-    fo.decks.forEach(d => wrap.appendChild(deckButton(d.name, d.cards, () => start(d.name, d.cards))));
+    fo.decks.forEach(d => wrap.appendChild(deckButton(d.name, d.cards, () => start(d.name, d.cards, d), "", d.local)));
     if(fo.decks.length > 1){
       const all = fo.decks.flatMap(d => d.cards);
       wrap.appendChild(deckButton("Ganzer Ordner: " + fo.name, all, () => start(fo.name + " (alle)", all), "all"));
@@ -283,8 +316,10 @@ function renderHome(){
 }
 
 /* ---------- Lernen ---------- */
-function start(title, cards){
-  cur = { title, cards };
+function start(title, cards, deck){
+  cur = { title, cards, deck };
+  $("btnShare").hidden = !deck;
+  $("btnDel").hidden = !(deck && deck.local);
   onlyOpen = false;
   $("btnOnly").textContent = "Nur offene";
   $("title").textContent = title;
@@ -351,7 +386,7 @@ document.addEventListener("keydown", e => {
 
 /* ---------- Neue Karten direkt auf der Seite erfassen ---------- */
 const KEY_REPO = "karten-repo";
-let pend = [], branch = "main";
+let pend = [];
 const clean = s => s.trim().replace(/[\\\/:*?"<>|#%]+/g, " ").trim().replace(/\s+/g, "_");
 
 function repoInfo(){
@@ -392,7 +427,7 @@ function renderPend(){
     li.appendChild(b);
     ol.appendChild(li);
   });
-  $("eSave").textContent = pend.length ? "Auf GitHub speichern (" + pend.length + " Karten)" : "Auf GitHub speichern";
+  saveLabel();
 }
 function addCard(){
   const f = $("eF").value.trim(), a = $("eA").value.trim();
@@ -410,54 +445,42 @@ function openEdit(){
   folders.filter(x => x.dir).forEach(x => {
     const o = document.createElement("option"); o.value = x.dir; $("dirs").appendChild(o);
   });
-  const r = repoInfo();
-  $("repoBox").hidden = !!r;
-  if(!r) $("repo").value = safeGet(KEY_REPO) || "";
-  else fetch("https://api.github.com/repos/" + r.owner + "/" + r.repo).then(x => x.json()).then(j => { if(j && j.default_branch) branch = j.default_branch; }).catch(() => {});
+  $("repoBox").hidden = !!repoInfo() || !safeGet(KEY_TOK);
+  if($("repoBox").hidden === false) $("repo").value = safeGet(KEY_REPO) || "";
+  if(safeGet(KEY_AI)) document.querySelector('input[name="iMode"][value="ai"]').checked = true;
   fillSets(); renderPend(); loadSettings(); aiUi();
 }
-function copyText(t){
-  try{ navigator.clipboard.writeText(t).catch(() => {}); }catch(e){}
-  $("eCopy").value = t; $("eCopy").hidden = false;
+function saveLabel(){
+  const n = pend.length ? " (" + pend.length + " Karten)" : "";
+  $("eSave").textContent = safeGet(KEY_TOK) ? "Auf GitHub speichern – für alle" + n : "Speichern auf diesem Gerät" + n;
 }
 function save(){
   const info = $("eInfo");
   if($("eF").value.trim() && $("eA").value.trim()) addCard();
   if(!pend.length){ info.textContent = "Füge zuerst mindestens eine Karte hinzu."; return; }
   const dir = clean($("eDir").value), set = clean($("eSet").value).replace(/\.txt$/i, "");
-  if(!dir || !set){ info.textContent = "Bitte Ordner und Set angeben."; return; }
-  let r = repoInfo();
-  if(!r){
-    const v = $("repo").value.trim();
-    if(v.split("/").length !== 2){ info.textContent = "Bitte das Repository als Benutzer/Repo angeben."; return; }
-    safeSet(KEY_REPO, v); r = repoInfo();
-  }
+  if(!dir || !set){ info.textContent = "Bitte oben Ordner und Set (Name) angeben."; $(dir ? "eSet" : "eDir").focus(); return; }
   const body = pend.map(c => c.f + "\n----\n" + c.a).join("\n\n====\n\n");
-  if(safeGet(KEY_TOK)){ saveDirect(r, dir, set, body); return; }
-  const fo = folders.find(x => x.dir.toLowerCase() === dir.toLowerCase());
-  const ex = fo && fo.decks.find(d => d.path.toLowerCase() === (fo.dir + "/" + set + ".txt").toLowerCase());
-  const enc = p => p.split("/").map(encodeURIComponent).join("/");
-  const root = "https://github.com/" + r.owner + "/" + r.repo;
-  let url, msg;
-  $("eCopy").hidden = true;
-  if(ex){
-    copyText("\n\n====\n\n" + body + "\n");
-    url = root + "/edit/" + branch + "/themen/" + enc(ex.path);
-    msg = "Set existiert schon. Die neuen Karten sind kopiert: auf GitHub ans Ende der Datei tippen, einfügen, dann Commit changes.";
-  }else{
-    const path = "themen/" + dir + "/" + set + ".txt";
-    url = root + "/new/" + branch + "?filename=" + enc(path) + "&value=" + encodeURIComponent(body + "\n");
-    if(url.length > 7000){
-      copyText(body + "\n");
-      url = root + "/new/" + branch + "?filename=" + enc(path);
-      msg = "Text ist lang und kopiert: auf GitHub ins Textfeld einfügen, dann Commit changes.";
-    }else msg = "GitHub ist offen und schon ausgefüllt: nur noch Commit changes tippen.";
+  if(safeGet(KEY_TOK)){
+    let r = repoInfo();
+    if(!r){
+      const v = $("repo").value.trim();
+      if(v.split("/").length !== 2){ info.textContent = "Bitte das Repository als Benutzer/Repo angeben."; return; }
+      safeSet(KEY_REPO, v); r = repoInfo();
+    }
+    saveDirect(r, dir, set, body); return;
   }
-  const w = window.open(url, "_blank");
-  info.textContent = msg + " ";
-  if(!w){ const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = "GitHub öffnen"; info.appendChild(a); }
-  pend = []; renderPend();
+  // nur auf diesem Gerät
+  const loc = safeGet(KEY_LOCAL) || {};
+  const id = Object.keys(loc).find(k => k.toLowerCase() === (dir + "/" + set).toLowerCase()) || dir + "/" + set;
+  loc[id] = loc[id] ? loc[id].replace(/\s+$/, "") + "\n\n====\n\n" + body : body;
+  try{ localStorage.setItem(KEY_LOCAL, JSON.stringify(loc)); }
+  catch(e){ info.textContent = "Speichern nicht möglich (privates Surfen oder Speicher voll)."; return; }
+  const n = pend.length;
+  pend = []; renderPend(); rebuild(); fillSets();
+  info.textContent = n + " Karten gespeichert in „" + nice(dir) + " › " + nice(set) + "“. Zum Lernen: ← Übersicht.";
 }
+
 /* ---------- Direkt auf GitHub speichern (mit Token) ---------- */
 const KEY_TOK = "karten-gh-token", KEY_AI = "karten-claude-key";
 const b64enc = t => { const u = new TextEncoder().encode(t); let s = ""; for(let n = 0; n < u.length; n += 0x8000) s += String.fromCharCode.apply(null, u.subarray(n, n + 0x8000)); return btoa(s); };
@@ -488,11 +511,12 @@ async function saveDirect(r, dir, set, body){
     }
     // sofort lokal anzeigen, GitHub Pages braucht ~1 Minute
     const rel = dir + "/" + set + ".txt";
-    let fo = folders.find(x => x.dir.toLowerCase() === dir.toLowerCase());
-    if(!fo){ fo = { name: nice(dir), dir, decks: [] }; folders.push(fo); folders.sort((a,b) => a.name.localeCompare(b.name, "de", {numeric:true})); }
+    let fo = remote.find(x => x.dir.toLowerCase() === dir.toLowerCase());
+    if(!fo){ fo = { name: nice(dir), dir, decks: [] }; remote.push(fo); }
     let dk = fo.decks.find(d => d.path.toLowerCase() === rel.toLowerCase());
     if(!dk){ dk = { name: nice(set), path: rel, cards: [] }; fo.decks.push(dk); }
     dk.cards = parse(text, dk.path);
+    rebuild();
     info.textContent = "Gespeichert: " + pend.length + " Karten in " + rel + ". Auf der Seite für alle sichtbar nach ca. 1 Minute.";
     pend = []; renderPend(); fillSets();
   }catch(e){
@@ -685,9 +709,79 @@ async function aiCards(units, fileName, opts, progress){
   return results.flat().filter(c => { const k = c.f.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; });
 }
 
+/* ---------- Gratis: über den Claude-Chat (claude.ai) ----------
+   Die Seite erstellt den Auftrag, man fügt ihn in den Chat ein und kopiert die Antwort zurück. */
+const PER_PART = { 1: 12, 2: 8, 3: 5 };
+function chatPrompt(us, fileName, amount, n, total){
+  return "Erstelle aus den folgenden Vorlesungsfolien Lern-Karteikarten für die Prüfungsvorbereitung (Schweizer Rechtsstudium).\n\n" + RULES + "\n\n" + AMOUNT[amount] +
+    "\n\nVorgehen: Erstelle zuerst alle Karten. Prüfe danach jede Karte selbst gegen die Folien (fachlich richtig? passen Frage und Antwort zusammen? fehlt etwas Wichtiges?) und korrigiere sie. Gib NUR die geprüfte Endfassung aus." +
+    "\n\nAusgabeformat – genau so, in EINEM Codeblock, ohne Einleitung, ohne Fettschrift, ohne Nummerierung der Karten:\n```\nFrage der ersten Karte\n----\nAntwort der ersten Karte\n====\nFrage der zweiten Karte\n----\nAntwort der zweiten Karte\n```\n\n" +
+    "Datei: " + fileName + (total > 1 ? " – Teil " + n + " von " + total : "") + "\n\nFolien:\n\n" +
+    us.map(u => "### " + u.label + (u.title ? ": " + u.title : "") + "\n" + u.body).join("\n\n");
+}
+function readReply(t){
+  t = t.replace(/\r/g, "");
+  const blocks = [...t.matchAll(/```[^\n]*\n([\s\S]*?)(?:```|$)/g)].map(m => m[1]);
+  if(blocks.length) t = blocks.join("\n====\n");
+  t = t.replace(/\*\*/g, "");
+  return parse(t, "").map(c => ({
+    f: c.f.replace(/^(Frage|Vorderseite)\s*\d*\s*:\s*/i, "").trim(),
+    a: c.a.replace(/^(Antwort|Rückseite)\s*:\s*/i, "").trim()
+  })).filter(c => c.f && c.a);
+}
+function copy(t){
+  let ok = false;
+  try{ navigator.clipboard.writeText(t); ok = true; }catch(e){}
+  if(!ok){
+    const ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select();
+    try{ ok = document.execCommand("copy"); }catch(e){}
+    ta.remove();
+  }
+  return ok;
+}
+function showChat(units, fileName, amount){
+  const per = PER_PART[amount], parts = [];
+  for(let n = 0; n < units.length; n += per) parts.push(units.slice(n, n + per));
+  const box = $("chatBox");
+  box.innerHTML = "";
+  box.hidden = false;
+  const intro = document.createElement("p");
+  intro.className = "status";
+  intro.textContent = parts.length > 1
+    ? "Die Datei ist in " + parts.length + " Teile aufgeteilt. Für jeden Teil: ① antippen, in Claude einfügen und senden, ② Antwort von Claude kopieren (Kopieren-Symbol am Codeblock) und unten einfügen."
+    : "① antippen, in Claude einfügen und senden. ② Antwort von Claude kopieren (Kopieren-Symbol am Codeblock) und unten einfügen.";
+  box.appendChild(intro);
+  parts.forEach((us, i) => {
+    const d = document.createElement("div");
+    d.className = "part";
+    d.innerHTML = '<b></b><div class="row" style="margin-top:8px"><button class="go"></button></div><textarea placeholder="② Antwort von Claude hier einfügen"></textarea><div class="row" style="margin-top:6px"><button class="take">Karten übernehmen</button></div><p class="status"></p>';
+    d.querySelector("b").textContent = (parts.length > 1 ? "Teil " + (i+1) + " von " + parts.length + " · " : "") + us[0].label + (us.length > 1 ? " – " + us[us.length-1].label : "");
+    const go = d.querySelector(".go"), ta = d.querySelector("textarea"), st = d.querySelector(".status");
+    go.textContent = "① Auftrag kopieren & Claude öffnen";
+    go.onclick = () => {
+      const ok = copy(chatPrompt(us, fileName, amount, i+1, parts.length));
+      window.open("https://claude.ai/new", "_blank");
+      st.className = "status";
+      st.textContent = ok ? "Kopiert! In Claude ins Textfeld tippen → Einfügen → Senden." : "Kopieren nicht möglich – bitte anderen Browser verwenden.";
+    };
+    const take = () => {
+      const cards = readReply(ta.value);
+      if(!cards.length){ st.className = "status err"; st.textContent = "Keine Karten erkannt. Bitte die ganze Antwort von Claude kopieren (Kopieren-Symbol am Codeblock)."; return; }
+      pend.push(...cards); renderPend();
+      ta.value = ""; d.classList.add("done");
+      st.className = "status okc";
+      st.textContent = "✓ " + cards.length + " Karten übernommen." + (i < parts.length - 1 ? " Weiter mit Teil " + (i+2) + " (am besten in einem neuen Chat)." : " Fertig – unten prüfen und speichern.");
+    };
+    d.querySelector(".take").onclick = take;
+    ta.addEventListener("paste", () => setTimeout(take, 0));
+    box.appendChild(d);
+  });
+}
+
 async function importFile(){
   const st = $("iStatus"), file = $("iFile").files[0];
   st.className = "status";
+  $("chatBox").hidden = true;
   if(!file){ st.textContent = "Bitte zuerst eine Datei wählen."; return; }
   const mode = document.querySelector('input[name="iMode"]:checked').value;
   const ext = (file.name.match(/\.(\w+)$/) || [, ""])[1].toLowerCase();
@@ -710,6 +804,13 @@ async function importFile(){
     if(units){
       units = units.filter(u => (u.title + u.body).trim());
       if(!units.length) throw new Error("Kein Text gefunden (evtl. nur Bilder/gescannt).");
+      if(mode === "chat"){
+        showChat(units, file.name, +$("iAmount").value);
+        if(!$("eSet").value.trim()) $("eSet").value = file.name.replace(/\.\w+$/, "");
+        st.className = "status okc";
+        st.textContent = units.length + " Folien/Seiten gelesen.";
+        return;
+      }
       if(mode === "ai"){
         const opts = { amount: +$("iAmount").value, review: $("iReview").checked };
         st.textContent = "Claude liest " + units.length + " Folien/Seiten …";
@@ -746,16 +847,40 @@ $("setSave").onclick = () => {
   const rm = x => { try{ localStorage.removeItem(x); }catch(e){} };
   t ? safeSet(KEY_TOK, t) : rm(KEY_TOK);
   k ? safeSet(KEY_AI, k) : rm(KEY_AI);
-  aiUi();
+  aiUi(); saveLabel(); $("repoBox").hidden = !!repoInfo() || !t;
   $("eInfo").textContent = "Einstellungen gespeichert." + (t ? " Speichern geht jetzt direkt." : "");
 };
-$("setClear").onclick = () => { try{ localStorage.removeItem(KEY_TOK); localStorage.removeItem(KEY_AI); }catch(e){} loadSettings(); aiUi(); $("eInfo").textContent = "Token und Schlüssel gelöscht."; };
+$("setClear").onclick = () => { try{ localStorage.removeItem(KEY_TOK); localStorage.removeItem(KEY_AI); }catch(e){} loadSettings(); aiUi(); saveLabel(); $("repoBox").hidden = true; $("eInfo").textContent = "Token und Schlüssel gelöscht."; };
 function aiUi(){
-  const ai = document.querySelector('input[name="iMode"]:checked').value === "ai";
-  $("aiOpts").hidden = !ai;
-  $("aiHint").textContent = safeGet(KEY_AI) ? "" : "Noch kein Claude API-Schlüssel eingetragen – unten unter „Einstellungen“ eintragen.";
+  const m = document.querySelector('input[name="iMode"]:checked').value;
+  $("aiOpts").hidden = m === "slides";
+  $("reviewRow").hidden = m !== "ai";
+  $("aiHint").textContent = m === "ai" && !safeGet(KEY_AI) ? "Dafür unten unter „Einstellungen“ einen Claude API-Schlüssel eintragen. Gratis geht es mit „Gratis mit Claude-Chat“." : m === "chat" ? "Du brauchst nur ein kostenloses Konto auf claude.ai." : "";
+  $("iGo").textContent = m === "chat" ? "Datei lesen" : "Karten erzeugen";
 }
 document.querySelectorAll('input[name="iMode"]').forEach(r => r.addEventListener("change", aiUi));
+$("btnShare").onclick = () => {
+  const d = cur.deck;
+  const text = d.text || d.cards.map(c => c.f + "\n----\n" + c.a).join("\n\n====\n\n");
+  const name = clean(d.name) + ".txt";
+  const file = new File([text + "\n"], name, { type: "text/plain" });
+  if(navigator.canShare && navigator.canShare({ files: [file] })){
+    navigator.share({ files: [file], title: d.name }).catch(() => {});
+  }else{
+    const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  alert("Die Datei „" + name + "“ kann man unter „+ Neue Karten → Aus Datei erstellen“ wieder öffnen.");
+};
+$("btnDel").onclick = () => {
+  const d = cur.deck;
+  if(!d.local || !confirm("Set „" + d.name + "“ auf diesem Gerät löschen?")) return;
+  const loc = safeGet(KEY_LOCAL) || {};
+  delete loc[d.local];
+  safeSet(KEY_LOCAL, loc);
+  rebuild();
+  $("learn").hidden = true; $("home").hidden = false; renderHome();
+};
 $("iGo").onclick = importFile;
 $("eNewDir").onclick = newDir;
 $("btnNewDir").onclick = newDir;
