@@ -726,7 +726,7 @@ async function readPptx(buf){
     }
     if(notes) lines.push("", "Notizen:", notes);
     if(!title && lines.length) title = lines.shift().replace(/^[•\s]+/, "");
-    out.push({ title: title || "Folie " + num(n), body: lines.join("\n").trim(), label: "Folie " + num(n), cover });
+    out.push({ title, body: lines.join("\n").trim(), label: "Folie " + num(n), cover });
   }
   return out;
 }
@@ -752,7 +752,7 @@ async function readPdf(buf){
     const tc = await (await pdf.getPage(n)).getTextContent();
     let txt = ""; tc.items.forEach(it => { txt += it.str + (it.hasEOL ? "\n" : " "); });
     const lines = txt.split("\n").map(l => l.replace(/\s+/g, " ").trim()).filter(Boolean);
-    if(lines.length) out.push({ title: lines[0], body: lines.slice(1).join("\n"), label: "Seite " + n });
+    out.push({ title: lines[0] || "", body: lines.slice(1).join("\n"), label: "Seite " + n });
   }
   return out;
 }
@@ -888,43 +888,94 @@ function copy(t){
   }
   return ok;
 }
-function showChat(units, fileName, amount){
-  const per = PER_PART[amount], parts = [];
-  for(let n = 0; n < units.length; n += per) parts.push(units.slice(n, n + per));
-  const box = $("chatBox");
-  box.innerHTML = "";
-  box.hidden = false;
-  const intro = document.createElement("p");
-  intro.className = "status";
-  intro.textContent = parts.length > 1
-    ? "Die Datei ist in " + parts.length + " Teile aufgeteilt. Für jeden Teil: ① antippen, in Claude einfügen und senden, ② Antwort von Claude kopieren (Kopieren-Symbol am Codeblock) und unten einfügen."
-    : "① antippen, in Claude einfügen und senden. ② Antwort von Claude kopieren (Kopieren-Symbol am Codeblock) und unten einfügen.";
-  box.appendChild(intro);
-  parts.forEach((us, i) => {
-    const d = document.createElement("div");
-    d.className = "part";
-    d.innerHTML = '<b></b><div class="row" style="margin-top:8px"><button class="go"></button></div><textarea placeholder="② Antwort von Claude hier einfügen"></textarea><div class="row" style="margin-top:6px"><button class="take">Karten übernehmen</button></div><p class="status"></p>';
-    d.querySelector("b").textContent = (parts.length > 1 ? "Teil " + (i+1) + " von " + parts.length + " · " : "") + us[0].label + (us.length > 1 ? " – " + us[us.length-1].label : "");
-    const go = d.querySelector(".go"), ta = d.querySelector("textarea"), st = d.querySelector(".status");
-    go.textContent = "① Auftrag kopieren & Claude öffnen";
-    go.onclick = () => {
-      const ok = copy(chatPrompt(us, fileName, amount, i+1, parts.length));
-      window.open("https://claude.ai/new", "_blank");
-      st.className = "status";
-      st.textContent = ok ? "Kopiert! In Claude ins Textfeld tippen → Einfügen → Senden." : "Kopieren nicht möglich – bitte anderen Browser verwenden.";
-    };
-    const take = () => {
-      const cards = readReply(ta.value);
-      if(!cards.length){ st.className = "status err"; st.textContent = "Keine Karten erkannt. Bitte die ganze Antwort von Claude kopieren (Kopieren-Symbol am Codeblock)."; return; }
-      pend.push(...cards); renderPend();
-      ta.value = ""; d.classList.add("done");
-      st.className = "status okc";
-      st.textContent = "✓ " + cards.length + " Karten übernommen." + (i < parts.length - 1 ? " Weiter mit Teil " + (i+2) + " (am besten in einem neuen Chat)." : " Fertig – unten prüfen und speichern.");
-    };
-    d.querySelector(".take").onclick = take;
-    ta.addEventListener("paste", () => setTimeout(take, 0));
+// Assistent: immer nur ein Teil sichtbar, nach dem Einfügen geht es automatisch weiter
+let wiz = null;
+function showChat(all, fileName, amount){
+  const withText = all.filter(u => (u.title + u.body).trim());
+  const empty = all.length - withText.length;
+  const word = /^Seite/.test(all[0].label) ? "Seiten" : "Folien";
+  wiz = { all, withText, fileName, amount, word, empty, attach: false, parts: [], i: 0, log: [] };
+  $("chatBox").hidden = false;
+  if(empty > 0 && withText.length < all.length){
+    const box = $("chatBox"); box.innerHTML = "";
+    const d = document.createElement("div"); d.className = "part";
+    d.innerHTML = '<b></b><p class="status"></p><div class="row" style="margin-top:8px"><button class="ok a1"></button></div><div class="row" style="margin-top:8px"><button class="a2"></button></div>';
+    d.querySelector("b").textContent = "Achtung: " + empty + " von " + all.length + " " + word + " enthalten keinen lesbaren Text";
+    d.querySelector(".status").textContent = "Diese " + word + " bestehen wohl nur aus Bildern (z. B. Scan oder Grafiken). Claude kann sie trotzdem lesen, wenn du die Datei direkt im Chat anhängst.";
+    d.querySelector(".a1").textContent = "Datei an Claude anhängen (empfohlen)";
+    d.querySelector(".a2").textContent = "Nur den lesbaren Text verwenden (" + withText.length + " " + word + ")";
+    d.querySelector(".a1").onclick = () => startWiz(true);
+    d.querySelector(".a2").onclick = () => withText.length ? startWiz(false) : null;
+    d.querySelector(".a2").disabled = !withText.length;
     box.appendChild(d);
-  });
+    return;
+  }
+  startWiz(false);
+}
+function startWiz(attach){
+  const per = PER_PART[wiz.amount];
+  wiz.attach = attach; wiz.i = 0; wiz.log = []; wiz.parts = [];
+  const src = attach ? wiz.all : wiz.withText;
+  for(let n = 0; n < src.length; n += per) wiz.parts.push(src.slice(n, n + per));
+  renderWiz();
+}
+const range = us => us[0].label + (us.length > 1 ? " – " + us[us.length-1].label.replace(/^\D+/, "") : "");
+function wizPrompt(){
+  const us = wiz.parts[wiz.i], n = wiz.i + 1, total = wiz.parts.length;
+  if(!wiz.attach) return chatPrompt(us, wiz.fileName, wiz.amount, n, total);
+  const from = us[0].label.replace(/^\D+/, ""), to = us[us.length-1].label.replace(/^\D+/, "");
+  const fmt = "\n\nAusgabeformat – genau so, in EINEM Codeblock, ohne Einleitung, ohne Fettschrift, ohne Nummerierung:\n```\nFrage der ersten Karte\n----\nAntwort der ersten Karte\n====\nFrage der zweiten Karte\n----\nAntwort der zweiten Karte\n```";
+  if(n > 1) return "Weiter mit " + wiz.word + " " + from + " bis " + to + " der angehängten Datei – gleiche Regeln, gleiche Menge, gleiches Format (ein Codeblock). Prüfe die Karten wieder selbst und gib nur die Endfassung aus." + fmt;
+  return "Im Anhang ist die Datei „" + wiz.fileName + "“ mit " + wiz.all.length + " " + wiz.word + ". Erstelle daraus Lern-Karteikarten für die Prüfungsvorbereitung (Schweizer Rechtsstudium). Lies auch Text in Bildern, Tabellen und Grafiken.\n\n" + RULES + "\n\n" + AMOUNT[wiz.amount] +
+    "\n\nWir gehen die Datei in " + total + " Teilen durch. Bearbeite jetzt NUR " + wiz.word + " " + from + " bis " + to + ". Erstelle zuerst die Karten, prüfe dann jede selbst gegen die Folien (fachlich richtig? passen Frage und Antwort? fehlt etwas?) und gib NUR die geprüfte Endfassung aus." + fmt;
+}
+function renderWiz(){
+  const box = $("chatBox"); box.innerHTML = "";
+  const total = wiz.parts.length;
+  wiz.log.forEach(t => { const p = document.createElement("p"); p.className = "status okc"; p.style.margin = "4px 0"; p.textContent = t; box.appendChild(p); });
+  if(wiz.i >= total){
+    const p = document.createElement("p"); p.className = "status okc";
+    p.innerHTML = "<b>Fertig – alle Teile erledigt (" + pend.length + " Karten in der Liste).</b> Unten prüfen und speichern.";
+    box.appendChild(p); return;
+  }
+  const us = wiz.parts[wiz.i], first = wiz.i === 0, sameChat = wiz.attach && !first;
+  const d = document.createElement("div"); d.className = "part";
+  d.innerHTML = '<b></b><p class="status how"></p><div class="row" style="margin-top:8px"><button class="go ok"></button></div><div class="row" style="margin-top:8px"><button class="paste"></button></div><textarea placeholder="… oder Antwort hier hinein einfügen (lange tippen → Einsetzen)"></textarea><p class="status pmsg"></p><div class="row" style="margin-top:6px"><button class="skip" style="font-weight:500;font-size:13px"></button></div>';
+  d.querySelector("b").textContent = (total > 1 ? "Teil " + (wiz.i+1) + " von " + total + " · " : "") + range(us);
+  d.querySelector(".how").textContent = wiz.attach
+    ? (first ? "① antippen → in Claude mit „+“ bzw. 📎 die Datei „" + wiz.fileName + "“ anhängen, Auftrag einfügen, senden. ② Wenn Claude fertig ist: Antwort kopieren (Kopieren-Symbol am Codeblock) und hier einfügen."
+             : "① antippen → im SELBEN Claude-Chat einfügen und senden (Datei nicht nochmals anhängen). ② Antwort kopieren und hier einfügen.")
+    : "① antippen → in Claude einfügen und senden. ② Antwort kopieren (Kopieren-Symbol am Codeblock) und hier einfügen.";
+  const go = d.querySelector(".go"), paste = d.querySelector(".paste"), ta = d.querySelector("textarea"), msg = d.querySelector(".pmsg"), skip = d.querySelector(".skip");
+  go.textContent = sameChat ? "① Nächsten Auftrag kopieren" : "① Auftrag kopieren & Claude öffnen";
+  paste.textContent = "② Antwort von Claude einfügen";
+  skip.textContent = wiz.i < total - 1 ? "Diesen Teil überspringen →" : "Diesen Teil überspringen";
+  go.onclick = () => {
+    const ok = copy(wizPrompt());
+    if(!sameChat) window.open(wiz.attach ? "https://claude.ai/new" : "https://claude.ai/new", "_blank");
+    msg.className = "status pmsg";
+    msg.textContent = ok ? (sameChat ? "Kopiert! Zurück zu Claude wechseln, einfügen, senden." : "Kopiert! In Claude einfügen und senden.") : "Kopieren nicht möglich – bitte anderen Browser verwenden.";
+  };
+  const take = text => {
+    const cards = readReply(text || "");
+    if(!cards.length){
+      msg.className = "status pmsg err";
+      msg.textContent = (text || "").trim() ? "Darin wurden keine Karten gefunden. Bitte in Claude das Kopieren-Symbol am Codeblock verwenden." : "Die Zwischenablage ist leer – zuerst in Claude die Antwort kopieren.";
+      return;
+    }
+    pend.push(...cards); renderPend();
+    wiz.log.push("✓ " + (total > 1 ? "Teil " + (wiz.i+1) + " (" + range(us) + ")" : range(us)) + ": " + cards.length + " Karten übernommen");
+    wiz.i++; renderWiz();
+    $("chatBox").scrollIntoView({ block: "start", behavior: "smooth" });
+  };
+  paste.onclick = async () => {
+    try{ take(await navigator.clipboard.readText()); }
+    catch(e){ msg.className = "status pmsg err"; msg.textContent = "Kein Zugriff auf die Zwischenablage – bitte lange ins Feld darunter tippen → Einsetzen."; ta.focus(); }
+  };
+  ta.addEventListener("paste", () => setTimeout(() => take(ta.value), 0));
+  let tm; ta.addEventListener("input", () => { clearTimeout(tm); tm = setTimeout(() => { if(ta.value.trim().length > 20) take(ta.value); }, 800); });
+  skip.onclick = () => { wiz.log.push("– Teil " + (wiz.i+1) + " übersprungen"); wiz.i++; renderWiz(); };
+  box.appendChild(d);
 }
 
 async function importFile(){
@@ -951,15 +1002,17 @@ async function importFile(){
     else throw new Error("Dateityp ." + ext + " wird nicht unterstützt.");
     let cards = [];
     if(units){
-      units = units.filter(u => (u.title + u.body).trim());
-      if(!units.length) throw new Error("Kein Text gefunden (evtl. nur Bilder/gescannt).");
+      if(!units.length) throw new Error("Die Datei ist leer.");
       if(mode === "chat"){
-        showChat(units, file.name, +$("iAmount").value);
+        const n = units.filter(u => (u.title + u.body).trim()).length;
         if(!$("eSet").value.trim()) $("eSet").value = file.name.replace(/\.\w+$/, "");
         st.className = "status okc";
-        st.textContent = units.length + " Folien/Seiten gelesen.";
+        st.textContent = units.length + " " + (/^Seite/.test(units[0].label) ? "Seiten" : "Folien") + " gelesen" + (n < units.length ? ", davon " + n + " mit Text." : ".");
+        showChat(units, file.name, +$("iAmount").value);
         return;
       }
+      units = units.filter(u => (u.title + u.body).trim());
+      if(!units.length) throw new Error("Kein Text gefunden (nur Bilder/gescannt). Tipp: „Gratis mit Claude-Chat“ wählen – dort kann die Datei direkt an Claude angehängt werden.");
       if(mode === "ai"){
         const opts = { amount: +$("iAmount").value, review: $("iReview").checked };
         st.textContent = "Claude liest " + units.length + " Folien/Seiten …";
