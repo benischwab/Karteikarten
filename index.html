@@ -59,6 +59,18 @@ textarea{min-height:110px;resize:vertical}
 .part.done{border-color:var(--ok)}
 .part .status{margin:6px 0 0}
 .deck .m .loc{color:var(--ok)}
+.drow{display:flex;gap:8px;align-items:stretch;margin-bottom:8px}
+.drow .deck{margin:0;flex:1}
+.drow .ed{flex:0 0 48px;min-width:0;padding:0;font-size:18px}
+.fhead .fdel{flex:0 0 auto;min-width:0;padding:4px 8px;font:500 12px system-ui,sans-serif;margin-left:8px}
+.fhead .fr{display:flex;align-items:center}
+.clist{padding-left:22px;font:15px system-ui,sans-serif}
+.clist li{margin-bottom:10px}
+.clist .ln{display:flex;gap:8px;align-items:flex-start}
+.clist .ln span{flex:1;padding-top:6px;word-break:break-word}
+.clist .ln button{flex:0 0 auto;min-width:0;padding:4px 10px}
+.clist li.open{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;list-style-position:inside}
+.clist li.open label{display:block;font:600 13px system-ui,sans-serif;margin:8px 0 4px}
 .box{border:1px dashed var(--line);border-radius:10px;padding:4px 14px 14px;margin:18px 0}
 .box h2{font:600 15px system-ui,sans-serif;margin:12px 0 4px}
 .box p{font:13px system-ui,sans-serif;color:var(--muted);margin:4px 0}
@@ -110,8 +122,9 @@ summary{cursor:pointer;font-weight:600}
     <button id="btnReset">Fortschritt löschen</button>
   </div>
   <div class="row tools" style="margin-top:8px">
+    <button id="btnEditCard">Diese Karte bearbeiten</button>
+    <button id="btnEditSet">Set bearbeiten / löschen</button>
     <button id="btnShare">Set teilen (Datei)</button>
-    <button id="btnDel" hidden>Set löschen</button>
   </div>
 </section>
 
@@ -163,7 +176,8 @@ summary{cursor:pointer;font-weight:600}
     <textarea id="eA"></textarea>
     <div class="row" style="margin-top:10px"><button id="eAdd">Karte zur Liste hinzufügen</button></div>
     <ol id="pend" class="pend"></ol>
-    <div class="row"><button class="ok" id="eSave">Speichern</button></div>
+    <div class="row"><button class="ok" id="eSave">Nur für mich speichern</button></div>
+    <div class="row" style="margin-top:8px"><button id="ePub" hidden>Für alle veröffentlichen (GitHub)</button></div>
     <p id="eInfo" class="hint"></p>
 
     <details>
@@ -177,6 +191,17 @@ summary{cursor:pointer;font-weight:600}
       <div class="row"><button id="setSave">Speichern</button><button id="setClear">Löschen</button></div>
     </details>
   </div>
+</section>
+
+<section id="sedit" hidden>
+  <header><button id="sBack">← Übersicht</button><span id="sWhere"></span></header>
+  <h1 id="sTitle"></h1>
+  <p class="intro" id="sNote"></p>
+  <ol id="sList" class="clist"></ol>
+  <div class="row"><button id="sAdd">+ Karte hinzufügen</button></div>
+  <div class="row" style="margin-top:10px"><button class="ok" id="sSave">Änderungen speichern</button></div>
+  <div class="row" style="margin-top:10px"><button class="no" id="sDel">Ganzes Set löschen</button></div>
+  <p id="sInfo" class="hint"></p>
 </section>
 
 </main>
@@ -244,7 +269,7 @@ async function loadAll(){
     const decks = (await Promise.all(files.map(async file => {
       const path = (name ? name + "/" : "") + file;
       try{
-        const r = await fetch(BASE + path.split("/").map(encodeURIComponent).join("/"));
+        const r = await fetch(BASE + path.split("/").map(encodeURIComponent).join("/"), { cache: "no-cache" });
         if(!r.ok) return null;
         const cards = parse(await r.text(), path);
         return cards.length ? { name: nice(file), path, cards } : null;
@@ -305,8 +330,22 @@ function renderHome(){
     head.innerHTML = "<h2></h2><span></span>";
     head.querySelector("h2").textContent = fo.name;
     head.querySelector("span").textContent = fo.decks.length + " Sets · " + total + " Karten";
+    if(fo.decks.some(canEdit)){
+      const sp = head.querySelector("span"), fr = document.createElement("div"); fr.className = "fr";
+      const del = document.createElement("button"); del.className = "fdel"; del.textContent = "Ordner löschen";
+      del.onclick = () => deleteFolder(fo);
+      head.replaceChild(fr, sp); fr.append(sp, del);
+    }
     wrap.appendChild(head);
-    fo.decks.forEach(d => wrap.appendChild(deckButton(d.name, d.cards, () => start(d.name, d.cards, d), "", d.local)));
+    fo.decks.forEach(d => {
+      const btn = deckButton(d.name, d.cards, () => start(d.name, d.cards, d), "", d.local);
+      if(!canEdit(d)){ wrap.appendChild(btn); return; }
+      const row = document.createElement("div"); row.className = "drow";
+      const ed = document.createElement("button"); ed.className = "ed"; ed.textContent = "✎";
+      ed.setAttribute("aria-label", "Set „" + d.name + "“ bearbeiten");
+      ed.onclick = () => openSet(d, -1);
+      row.append(btn, ed); wrap.appendChild(row);
+    });
     if(fo.decks.length > 1){
       const all = fo.decks.flatMap(d => d.cards);
       wrap.appendChild(deckButton("Ganzer Ordner: " + fo.name, all, () => start(fo.name + " (alle)", all), "all"));
@@ -319,7 +358,7 @@ function renderHome(){
 function start(title, cards, deck){
   cur = { title, cards, deck };
   $("btnShare").hidden = !deck;
-  $("btnDel").hidden = !(deck && deck.local);
+  $("btnEditSet").hidden = $("btnEditCard").hidden = !(deck && canEdit(deck));
   onlyOpen = false;
   $("btnOnly").textContent = "Nur offene";
   $("title").textContent = title;
@@ -452,16 +491,19 @@ function openEdit(){
 }
 function saveLabel(){
   const n = pend.length ? " (" + pend.length + " Karten)" : "";
-  $("eSave").textContent = safeGet(KEY_TOK) ? "Auf GitHub speichern – für alle" + n : "Speichern auf diesem Gerät" + n;
+  $("eSave").textContent = "Nur für mich speichern" + n;
+  $("ePub").textContent = "Für alle veröffentlichen (GitHub)" + n;
+  $("ePub").hidden = !safeGet(KEY_TOK);
 }
-function save(){
+function save(pub){
   const info = $("eInfo");
   if($("eF").value.trim() && $("eA").value.trim()) addCard();
   if(!pend.length){ info.textContent = "Füge zuerst mindestens eine Karte hinzu."; return; }
   const dir = clean($("eDir").value), set = clean($("eSet").value).replace(/\.txt$/i, "");
   if(!dir || !set){ info.textContent = "Bitte oben Ordner und Set (Name) angeben."; $(dir ? "eSet" : "eDir").focus(); return; }
   const body = pend.map(c => c.f + "\n----\n" + c.a).join("\n\n====\n\n");
-  if(safeGet(KEY_TOK)){
+  if(pub === true){
+    if(!safeGet(KEY_TOK)){ info.textContent = "Zum Veröffentlichen braucht es einen GitHub-Token (Einstellungen)."; return; }
     let r = repoInfo();
     if(!r){
       const v = $("repo").value.trim();
@@ -478,7 +520,7 @@ function save(){
   catch(e){ info.textContent = "Speichern nicht möglich (privates Surfen oder Speicher voll)."; return; }
   const n = pend.length;
   pend = []; renderPend(); rebuild(); fillSets();
-  info.textContent = n + " Karten gespeichert in „" + nice(dir) + " › " + nice(set) + "“. Zum Lernen: ← Übersicht.";
+  info.textContent = n + " Karten nur für dich gespeichert in „" + nice(dir) + " › " + nice(set) + "“ (nur auf diesem Gerät sichtbar). Zum Lernen: ← Übersicht.";
 }
 
 /* ---------- Direkt auf GitHub speichern (mit Token) ---------- */
@@ -486,43 +528,150 @@ const KEY_TOK = "karten-gh-token", KEY_AI = "karten-claude-key";
 const b64enc = t => { const u = new TextEncoder().encode(t); let s = ""; for(let n = 0; n < u.length; n += 0x8000) s += String.fromCharCode.apply(null, u.subarray(n, n + 0x8000)); return btoa(s); };
 const b64dec = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g, "")), c => c.charCodeAt(0)));
 
+function ghApi(path){
+  const r = repoInfo();
+  if(!r) throw new Error("Repository unbekannt – unter Einstellungen angeben.");
+  return "https://api.github.com/repos/" + r.owner + "/" + r.repo + "/contents/themen/" + path.split("/").map(encodeURIComponent).join("/");
+}
+const ghHead = () => ({ "Authorization": "Bearer " + safeGet(KEY_TOK), "Accept": "application/vnd.github+json" });
+async function ghFail(res){
+  const j = await res.json().catch(() => ({}));
+  if(res.status === 401) return new Error("GitHub-Token ungültig oder abgelaufen.");
+  if(res.status === 403 || res.status === 404) return new Error("Keine Schreibrechte – Token braucht „Contents: Read and write“ für dieses Repository.");
+  return new Error(j.message || "GitHub-Fehler " + res.status);
+}
+async function ghGet(path){
+  const g = await fetch(ghApi(path), { headers: ghHead(), cache: "no-store" });
+  if(g.status === 404) return null;
+  if(!g.ok) throw await ghFail(g);
+  const j = await g.json();
+  return { sha: j.sha, text: b64dec(j.content) };
+}
+// text === null löscht die Datei
+async function ghWrite(path, text, sha, message){
+  const res = await fetch(ghApi(path), {
+    method: text === null ? "DELETE" : "PUT",
+    headers: { ...ghHead(), "Content-Type": "application/json" },
+    body: JSON.stringify(text === null ? { message, sha } : { message, content: b64enc(text), ...(sha ? { sha } : {}) })
+  });
+  if(!res.ok) throw await ghFail(res);
+}
+
 async function saveDirect(r, dir, set, body){
-  const info = $("eInfo"), btn = $("eSave");
-  const path = "themen/" + dir + "/" + set + ".txt";
-  const api = "https://api.github.com/repos/" + r.owner + "/" + r.repo + "/contents/" + path.split("/").map(encodeURIComponent).join("/");
-  const h = { "Authorization": "Bearer " + safeGet(KEY_TOK), "Accept": "application/vnd.github+json" };
-  btn.disabled = true; info.textContent = "Speichere auf GitHub …";
+  const info = $("eInfo"), btn = $("ePub");
+  const rel = dir + "/" + set + ".txt";
+  btn.disabled = true; info.textContent = "Veröffentliche auf GitHub …";
   try{
-    let sha, text = body + "\n";
-    const g = await fetch(api, { headers: h, cache: "no-store" });
-    if(g.ok){
-      const j = await g.json();
-      sha = j.sha;
-      text = b64dec(j.content).replace(/\s+$/, "") + "\n\n====\n\n" + body + "\n";
-    }else if(g.status === 401){ throw new Error("Token ungültig oder abgelaufen."); }
-    else if(g.status !== 404){ throw new Error("GitHub antwortet mit " + g.status + "."); }
-    const put = await fetch(api, { method: "PUT", headers: { ...h, "Content-Type": "application/json" }, body: JSON.stringify({
-      message: (sha ? "Karten ergänzt: " : "Neues Set: ") + dir + "/" + set + " (" + pend.length + " Karten)",
-      content: b64enc(text), ...(sha ? { sha } : {})
-    })});
-    if(!put.ok){
-      const j = await put.json().catch(() => ({}));
-      throw new Error(put.status === 403 || put.status === 404 ? "Keine Schreibrechte – Token braucht „Contents: Read and write“ für " + r.owner + "/" + r.repo + "." : (j.message || "Fehler " + put.status));
-    }
-    // sofort lokal anzeigen, GitHub Pages braucht ~1 Minute
-    const rel = dir + "/" + set + ".txt";
+    const cur = await ghGet(rel);
+    const text = cur ? cur.text.replace(/\s+$/, "") + "\n\n====\n\n" + body + "\n" : body + "\n";
+    await ghWrite(rel, text, cur && cur.sha, (cur ? "Karten ergänzt: " : "Neues Set: ") + dir + "/" + set + " (" + pend.length + " Karten)");
+    // sofort anzeigen, GitHub Pages braucht ~1 Minute
     let fo = remote.find(x => x.dir.toLowerCase() === dir.toLowerCase());
     if(!fo){ fo = { name: nice(dir), dir, decks: [] }; remote.push(fo); }
     let dk = fo.decks.find(d => d.path.toLowerCase() === rel.toLowerCase());
     if(!dk){ dk = { name: nice(set), path: rel, cards: [] }; fo.decks.push(dk); }
     dk.cards = parse(text, dk.path);
     rebuild();
-    info.textContent = "Gespeichert: " + pend.length + " Karten in " + rel + ". Auf der Seite für alle sichtbar nach ca. 1 Minute.";
+    info.textContent = "Veröffentlicht: " + pend.length + " Karten in " + rel + ". Für alle sichtbar nach ca. 1 Minute.";
     pend = []; renderPend(); fillSets();
   }catch(e){
     info.textContent = "Nicht gespeichert: " + e.message;
   }finally{ btn.disabled = false; }
 }
+
+/* ---------- Sets, Karten und Ordner bearbeiten / löschen ----------
+   Eigene Sets (dieses Gerät) darf jede:r bearbeiten, GitHub-Sets nur mit Token (Admin). */
+const canEdit = d => !!(d && (d.local || safeGet(KEY_TOK)));
+const cardsText = cards => cards.map(c => c.f + "\n----\n" + c.a).join("\n\n====\n\n");
+// schreibt ein Set neu; leere Liste = Set löschen
+async function writeDeck(d, cards){
+  if(d.local){
+    const loc = safeGet(KEY_LOCAL) || {};
+    if(cards.length) loc[d.local] = cardsText(cards); else delete loc[d.local];
+    try{ localStorage.setItem(KEY_LOCAL, JSON.stringify(loc)); }catch(e){ throw new Error("Speichern im Browser nicht möglich."); }
+  }else{
+    const cur = await ghGet(d.path);
+    if(cards.length) await ghWrite(d.path, cardsText(cards) + "\n", cur && cur.sha, "Set bearbeitet: " + d.path);
+    else if(cur) await ghWrite(d.path, null, cur.sha, "Set gelöscht: " + d.path);
+    const fo = remote.find(f => f.decks.includes(d));
+    if(cards.length) d.cards = parse(cardsText(cards), d.path);
+    else if(fo){ fo.decks.splice(fo.decks.indexOf(d), 1); if(!fo.decks.length) remote.splice(remote.indexOf(fo), 1); }
+  }
+  rebuild();
+}
+async function deleteFolder(fo){
+  const own = fo.decks.filter(canEdit), rest = fo.decks.length - own.length;
+  if(!confirm("Ordner „" + fo.name + "“ löschen?\n\n" + own.length + " Set(s) mit " + own.reduce((n, d) => n + d.cards.length, 0) + " Karten werden gelöscht" + (own.some(d => !d.local) ? " – auch auf GitHub für alle" : "") + ".")) return;
+  try{ for(const d of own) await writeDeck(d, []); }
+  catch(e){ alert("Nicht alles gelöscht: " + e.message); }
+  renderHome();
+  if(rest) alert(rest + " Set(s) gehören nicht dir und bleiben bestehen.");
+}
+
+let ed = null;   // { deck, cards:[{f,a}], open, dirty }
+function openSet(deck, open){
+  ed = { deck, cards: deck.cards.map(c => ({ f: c.f, a: c.a })), open, dirty: false };
+  $("home").hidden = $("learn").hidden = true; $("sedit").hidden = false;
+  $("sTitle").textContent = deck.name;
+  $("sWhere").textContent = deck.local ? "nur auf diesem Gerät" : "für alle (GitHub)";
+  $("sNote").textContent = deck.local ? "Änderungen betreffen nur dich." : "Achtung: Änderungen an diesem Set sehen alle.";
+  $("sInfo").textContent = "";
+  renderSet();
+  if(open >= 0){ const li = $("sList").children[open]; if(li){ li.scrollIntoView({ block: "center" }); const t = li.querySelector("textarea"); if(t) t.focus(); } }
+}
+function renderSet(){
+  const ol = $("sList"); ol.innerHTML = "";
+  ed.cards.forEach((c, n) => {
+    const li = document.createElement("li");
+    if(ed.open === n){
+      li.className = "open";
+      li.innerHTML = '<label>Vorderseite</label><textarea class="f"></textarea><label>Rückseite</label><textarea class="a"></textarea><div class="row" style="margin-top:8px"><button class="done">Fertig</button><button class="del no">Karte löschen</button></div>';
+      const f = li.querySelector(".f"), a = li.querySelector(".a");
+      f.value = c.f; a.value = c.a;
+      f.oninput = () => { c.f = f.value; ed.dirty = true; };
+      a.oninput = () => { c.a = a.value; ed.dirty = true; };
+      li.querySelector(".done").onclick = () => { ed.open = -1; renderSet(); };
+      li.querySelector(".del").onclick = () => { ed.cards.splice(n, 1); ed.open = -1; ed.dirty = true; renderSet(); };
+    }else{
+      li.innerHTML = '<div class="ln"><span></span><button class="e" aria-label="Karte bearbeiten">✎</button><button class="x" aria-label="Karte löschen">×</button></div>';
+      li.querySelector("span").textContent = c.f.replace(/\s+/g, " ").slice(0, 90) + (c.f.length > 90 ? " …" : "");
+      li.querySelector(".e").onclick = () => { ed.open = n; renderSet(); $("sList").children[n].querySelector("textarea").focus(); };
+      li.querySelector(".x").onclick = () => { ed.cards.splice(n, 1); ed.open = -1; ed.dirty = true; renderSet(); };
+    }
+    ol.appendChild(li);
+  });
+  $("sSave").textContent = "Änderungen speichern (" + ed.cards.length + " Karten)";
+}
+async function saveSet(){
+  const cards = ed.cards.map(c => ({ f: c.f.trim(), a: c.a.trim() })).filter(c => c.f && c.a);
+  if(!cards.length){ deleteSet(); return; }
+  $("sSave").disabled = true; $("sInfo").textContent = "Speichere …";
+  try{
+    await writeDeck(ed.deck, cards);
+    ed.dirty = false;
+    closeSet();
+  }catch(e){ $("sInfo").textContent = "Nicht gespeichert: " + e.message; }
+  finally{ $("sSave").disabled = false; }
+}
+async function deleteSet(){
+  if(!confirm("Set „" + ed.deck.name + "“ mit allen Karten löschen?" + (ed.deck.local ? "" : "\n\nEs wird auf GitHub für alle gelöscht."))) return;
+  try{ await writeDeck(ed.deck, []); ed.dirty = false; closeSet(); }
+  catch(e){ $("sInfo").textContent = "Nicht gelöscht: " + e.message; }
+}
+function closeSet(){
+  if(ed && ed.dirty && !confirm("Ungespeicherte Änderungen verwerfen?")) return;
+  ed = null;
+  $("sedit").hidden = true; $("home").hidden = false; renderHome();
+}
+$("sAdd").onclick = () => { ed.cards.push({ f: "", a: "" }); ed.open = ed.cards.length - 1; ed.dirty = true; renderSet(); $("sList").lastChild.querySelector("textarea").focus(); };
+$("sSave").onclick = saveSet;
+$("sDel").onclick = deleteSet;
+$("sBack").onclick = closeSet;
+$("btnEditSet").onclick = () => openSet(cur.deck, -1);
+$("btnEditCard").onclick = () => {
+  const c = deck[i];
+  openSet(cur.deck, c ? cur.deck.cards.indexOf(c) : -1);
+};
 
 /* ---------- Dateien einlesen (PowerPoint, PDF, Word, Text) ---------- */
 const libs = {};
@@ -872,22 +1021,14 @@ $("btnShare").onclick = () => {
   }
   alert("Die Datei „" + name + "“ kann man unter „+ Neue Karten → Aus Datei erstellen“ wieder öffnen.");
 };
-$("btnDel").onclick = () => {
-  const d = cur.deck;
-  if(!d.local || !confirm("Set „" + d.name + "“ auf diesem Gerät löschen?")) return;
-  const loc = safeGet(KEY_LOCAL) || {};
-  delete loc[d.local];
-  safeSet(KEY_LOCAL, loc);
-  rebuild();
-  $("learn").hidden = true; $("home").hidden = false; renderHome();
-};
 $("iGo").onclick = importFile;
 $("eNewDir").onclick = newDir;
 $("btnNewDir").onclick = newDir;
 $("btnNew").onclick = openEdit;
 $("btnEditBack").onclick = () => { $("edit").hidden = true; $("home").hidden = false; renderHome(); };
 $("eAdd").onclick = addCard;
-$("eSave").onclick = save;
+$("eSave").onclick = () => save(false);
+$("ePub").onclick = () => save(true);
 $("eDir").addEventListener("input", fillSets);
 
 loadAll().then(renderHome);
