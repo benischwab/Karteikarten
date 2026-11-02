@@ -71,6 +71,24 @@ textarea{min-height:110px;resize:vertical}
 .clist .ln button{flex:0 0 auto;min-width:0;padding:4px 10px}
 .clist li.open{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;list-style-position:inside}
 .clist li.open label{display:block;font:600 13px system-ui,sans-serif;margin:8px 0 4px}
+:root{--s1:#c4452d;--s2:#d99a1e;--s3:#1f8a5b}
+.stages{display:flex;gap:8px;margin:6px 0 10px}
+.stage{flex:1;min-width:0;border:2px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;background:var(--card);color:var(--ink);cursor:pointer;font-family:system-ui,sans-serif}
+.stage .n{font:700 28px system-ui,sans-serif;display:block}
+.stage .l{font:600 13px system-ui,sans-serif;display:block}
+.stage .d{font:12px system-ui,sans-serif;color:var(--muted);display:block;margin-top:2px}
+.stage.s1{border-color:var(--s1)} .stage.s1 .n{color:var(--s1)}
+.stage.s2{border-color:var(--s2)} .stage.s2 .n{color:var(--s2)}
+.stage.s3{border-color:var(--s3)} .stage.s3 .n{color:var(--s3)}
+.sbar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--line);margin-bottom:12px}
+.sbar i{display:block;height:100%;transition:width .3s}
+.sbar .b1{background:var(--s1)} .sbar .b2{background:var(--s2)} .sbar .b3{background:var(--s3)}
+.deck .sbar{height:5px;margin:8px 0 0}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin:0 3px 0 8px;vertical-align:baseline}
+.dot.s1{background:var(--s1)} .dot.s2{background:var(--s2)} .dot.s3{background:var(--s3)}
+#lvl{font:600 13px system-ui,sans-serif;padding:3px 10px;border-radius:20px;color:#fff}
+.card.s1 .face{border-top:6px solid var(--s1)} .card.s2 .face{border-top:6px solid var(--s2)} .card.s3 .face{border-top:6px solid var(--s3)}
+#lvl.s1{background:var(--s1)} #lvl.s2{background:var(--s2)} #lvl.s3{background:var(--s3)}
 .box{border:1px dashed var(--line);border-radius:10px;padding:4px 14px 14px;margin:18px 0}
 .box h2{font:600 15px system-ui,sans-serif;margin:12px 0 4px}
 .box p{font:13px system-ui,sans-serif;color:var(--muted);margin:4px 0}
@@ -100,10 +118,28 @@ summary{cursor:pointer;font-weight:600}
   <div id="list"><p class="msg">Lade Themen …</p></div>
 </section>
 
+<section id="setv" hidden>
+  <header><button id="vBack">← Übersicht</button><span id="vWhere"></span></header>
+  <h1 id="vTitle"></h1>
+  <div class="stages" id="vStages"></div>
+  <div class="sbar" id="vBar"></div>
+  <div class="row" style="margin-top:14px"><button class="ok" id="vLearn"></button></div>
+  <p class="hint" id="vHint"></p>
+  <div class="row"><button id="vAll"></button></div>
+  <div class="row tools">
+    <button id="vEdit">Set bearbeiten</button>
+    <button id="vShare">Set teilen (Datei)</button>
+  </div>
+  <div class="row tools" style="margin-top:8px">
+    <button id="vReset">Fortschritt zurücksetzen</button>
+    <button id="vDel" class="no">Set löschen</button>
+  </div>
+</section>
+
 <section id="learn" hidden>
-  <header><button id="btnHome">← Übersicht</button><span id="count"></span><span id="score"></span></header>
+  <header><button id="btnHome">← Set</button><span id="count"></span><span id="lvl"></span></header>
   <p id="title"></p>
-  <div class="bar"><i id="bar"></i></div>
+  <div class="sbar" id="bar"></div>
   <div class="scene" id="scene" tabindex="0" role="button" aria-label="Karte umdrehen">
     <div class="card" id="card">
       <div class="face front" id="front"></div>
@@ -112,19 +148,13 @@ summary{cursor:pointer;font-weight:600}
   </div>
   <p class="hint">Antippen oder Leertaste zum Umdrehen · Pfeiltasten zum Blättern</p>
   <div class="row">
-    <button class="no" id="btnNo">Nochmal</button>
-    <button class="ok" id="btnOk">Gewusst</button>
+    <button class="no" id="btnNo">Falsch · Stufe runter</button>
+    <button class="ok" id="btnOk">Richtig · Stufe rauf</button>
   </div>
   <div class="row tools">
     <button id="btnPrev">Zurück</button>
     <button id="btnShuffle">Mischen</button>
-    <button id="btnOnly">Nur offene</button>
-    <button id="btnReset">Fortschritt löschen</button>
-  </div>
-  <div class="row tools" style="margin-top:8px">
     <button id="btnEditCard">Diese Karte bearbeiten</button>
-    <button id="btnEditSet">Set bearbeiten / löschen</button>
-    <button id="btnShare">Set teilen (Datei)</button>
   </div>
 </section>
 
@@ -158,7 +188,7 @@ summary{cursor:pointer;font-weight:600}
       <div id="aiOpts">
         <label for="iAmount">Wie viele Karten?</label>
         <select id="iAmount">
-          <option value="1">Kompakt – nur das Wichtigste</option>
+          <option value="1">Nur Fälle &amp; Fragen von den Folien – mit Lösung (keine eigenen Fragen)</option>
           <option value="2" selected>Ausführlich – alle Begriffe, Voraussetzungen, Fälle</option>
           <option value="3">Sehr ausführlich – jedes Detail einzeln abfragen</option>
         </select>
@@ -209,12 +239,14 @@ summary{cursor:pointer;font-weight:600}
 <script>
 const $ = id => document.getElementById(id);
 const BASE = "themen/";
-const KEY_KNOWN = "karten-gewusst-v2";
+const KEY_KNOWN = "karten-gewusst-v2";   // alt (gewusst ja/nein) – wird übernommen
+const KEY_LVL = "karten-stufen-v1";        // { Kartenschlüssel: 1 | 2 | 3 }
+const STUFEN = { 1: ["Stufe 1", "neu / unsicher"], 2: ["Stufe 2", "fast sicher"], 3: ["Stufe 3", "kann ich"] };
 
 let folders = [];            // [{name, dir, decks:[{name, path, cards:[{f,a,k}], local?}]}]
 let remote = [];             // Karten aus dem Repository (für alle sichtbar)
 const KEY_LOCAL = "karten-eigene-v1";   // { "Ordner/Set": "Kartentext" } – nur auf diesem Gerät
-let cur = null, deck = [], i = 0, onlyOpen = false, known = {};
+let cur = null, deck = [], i = 0;
 
 function safeGet(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } }
 function safeSet(k,v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
@@ -297,24 +329,45 @@ function rebuild(){
   folders = out;
 }
 
-/* ---------- Übersicht ---------- */
-const countKnown = cards => cards.filter(c => known[c.k]).length;
+/* ---------- Stufen ----------
+   Neue Karten sind in Stufe 1. Richtig → eine Stufe rauf, falsch → eine Stufe runter.
+   Stufe 3 wird nicht mehr automatisch abgefragt, nur wenn man sie auswählt. */
+let lvl = {};
+function loadLevels(){
+  lvl = safeGet(KEY_LVL);
+  if(!lvl){ // alten Fortschritt übernehmen: „gewusst“ → Stufe 2
+    lvl = {}; const old = safeGet(KEY_KNOWN) || {};
+    Object.keys(old).forEach(k => { if(old[k]) lvl[k] = 2; });
+    safeSet(KEY_LVL, lvl);
+  }
+}
+const level = c => lvl[c.k] || 1;
+const counts = cards => { const n = { 1: 0, 2: 0, 3: 0 }; cards.forEach(c => n[level(c)]++); return n; };
+function fillBar(el, cards){
+  const n = counts(cards), t = cards.length || 1;
+  el.innerHTML = '<i class="b1"></i><i class="b2"></i><i class="b3"></i>';
+  [1, 2, 3].forEach(s => { el.children[s-1].style.width = n[s] / t * 100 + "%"; });
+}
 
+/* ---------- Übersicht ---------- */
 function deckButton(title, cards, onclick, cls, local){
   const b = document.createElement("button");
   b.className = "deck" + (cls ? " " + cls : "");
-  const k = countKnown(cards);
-  b.innerHTML = '<div class="t"></div><div class="m"></div><div class="pb"><i></i></div>';
+  const n = counts(cards);
+  b.innerHTML = '<div class="t"></div><div class="m"></div><div class="sbar"></div>';
   b.querySelector(".t").textContent = title;
-  b.querySelector(".m").textContent = cards.length + " Karten · " + k + " gewusst";
-  if(local){ const l = document.createElement("span"); l.className = "loc"; l.textContent = " · eigene (dieses Gerät)"; b.querySelector(".m").appendChild(l); }
-  b.querySelector("i").style.width = (cards.length ? k / cards.length * 100 : 0) + "%";
+  const m = b.querySelector(".m");
+  m.textContent = cards.length + " Karten";
+  [1, 2, 3].forEach(s => { const d = document.createElement("span"); d.className = "dot s" + s; m.append(d, String(n[s])); });
+  if(local){ const l = document.createElement("span"); l.className = "loc"; l.textContent = " · eigene (dieses Gerät)"; m.appendChild(l); }
+  fillBar(b.querySelector(".sbar"), cards);
+  b.setAttribute("aria-label", title + ": " + cards.length + " Karten, Stufe 1: " + n[1] + ", Stufe 2: " + n[2] + ", Stufe 3: " + n[3]);
   b.onclick = onclick;
   return b;
 }
 
 function renderHome(){
-  known = safeGet(KEY_KNOWN) || {};
+  loadLevels();
   const list = $("list");
   list.innerHTML = "";
   if(!folders.length){
@@ -337,62 +390,92 @@ function renderHome(){
       head.replaceChild(fr, sp); fr.append(sp, del);
     }
     wrap.appendChild(head);
-    fo.decks.forEach(d => {
-      const btn = deckButton(d.name, d.cards, () => start(d.name, d.cards, d), "", d.local);
-      if(!canEdit(d)){ wrap.appendChild(btn); return; }
-      const row = document.createElement("div"); row.className = "drow";
-      const ed = document.createElement("button"); ed.className = "ed"; ed.textContent = "✎";
-      ed.setAttribute("aria-label", "Set „" + d.name + "“ bearbeiten");
-      ed.onclick = () => openSet(d, -1);
-      row.append(btn, ed); wrap.appendChild(row);
-    });
+    fo.decks.forEach(d => wrap.appendChild(deckButton(d.name, d.cards, () => openView(d.name, d.cards, d), "", d.local)));
     if(fo.decks.length > 1){
       const all = fo.decks.flatMap(d => d.cards);
-      wrap.appendChild(deckButton("Ganzer Ordner: " + fo.name, all, () => start(fo.name + " (alle)", all), "all"));
+      wrap.appendChild(deckButton("Ganzer Ordner: " + fo.name, all, () => openView(fo.name + " (ganzer Ordner)", all, null), "all"));
     }
     list.appendChild(wrap);
   });
 }
+const showOnly = id => ["home", "setv", "learn", "edit", "sedit"].forEach(x => { $(x).hidden = x !== id; });
+
+/* ---------- Set-Übersicht: Stufen, Lernen, Bearbeiten, Teilen, Löschen ---------- */
+let view = null;   // { title, cards, deck }
+function openView(title, cards, deck){
+  view = { title, cards, deck };
+  renderView(); showOnly("setv"); window.scrollTo(0, 0);
+}
+function renderView(){
+  loadLevels();
+  const { title, cards, deck } = view, n = counts(cards);
+  $("vTitle").textContent = title;
+  $("vWhere").textContent = !deck ? "" : deck.local ? "eigene (dieses Gerät)" : "für alle";
+  const box = $("vStages"); box.innerHTML = "";
+  [1, 2, 3].forEach(st => {
+    const b = document.createElement("button");
+    b.className = "stage s" + st;
+    b.innerHTML = '<span class="n"></span><span class="l"></span><span class="d"></span>';
+    b.querySelector(".n").textContent = n[st];
+    b.querySelector(".l").textContent = STUFEN[st][0];
+    b.querySelector(".d").textContent = STUFEN[st][1];
+    b.setAttribute("aria-label", STUFEN[st][0] + " lernen: " + n[st] + " Karten");
+    b.onclick = () => n[st] ? learn([st]) : null;
+    box.appendChild(b);
+  });
+  fillBar($("vBar"), cards);
+  const due = n[1] + n[2];
+  $("vLearn").textContent = due ? "Lernen – Stufe 1 + 2 (" + due + " Karten)" : "Alles in Stufe 3 ✓";
+  $("vLearn").disabled = !due;
+  $("vHint").textContent = due ? "Stufe 3 wird nicht automatisch abgefragt – zum Wiederholen oben auf „Stufe 3“ tippen." : "Super! Zum Wiederholen oben auf „Stufe 3“ tippen.";
+  $("vAll").textContent = "Alle Karten lernen (" + cards.length + ")";
+  const own = !!(deck && canEdit(deck));
+  $("vEdit").hidden = $("vDel").hidden = !own;
+  $("vShare").hidden = !deck;
+}
+$("vBack").onclick = () => { showOnly("home"); renderHome(); };
+$("vLearn").onclick = () => learn([1, 2]);
+$("vAll").onclick = () => learn([1, 2, 3]);
+$("vEdit").onclick = () => openSet(view.deck, -1);
+$("vReset").onclick = () => {
+  if(!confirm("Alle Karten von „" + view.title + "“ wieder auf Stufe 1 setzen?")) return;
+  view.cards.forEach(c => delete lvl[c.k]);
+  safeSet(KEY_LVL, lvl); renderView();
+};
 
 /* ---------- Lernen ---------- */
-function start(title, cards, deck){
-  cur = { title, cards, deck };
-  $("btnShare").hidden = !deck;
-  $("btnEditSet").hidden = $("btnEditCard").hidden = !(deck && canEdit(deck));
-  onlyOpen = false;
-  $("btnOnly").textContent = "Nur offene";
-  $("title").textContent = title;
-  $("home").hidden = true;
-  $("learn").hidden = false;
-  build();
-}
-function build(){
-  deck = cur.cards.filter(c => !(onlyOpen && known[c.k]));
-  i = 0; show();
+function learn(stages){
+  cur = { title: view.title, cards: view.cards, deck: view.deck, stages };
+  $("title").textContent = view.title + " · " + (stages.length === 3 ? "alle Karten" : stages.map(s => "Stufe " + s).join(" + "));
+  // Stufe 1 zuerst, dann 2, dann 3
+  deck = view.cards.filter(c => stages.includes(level(c))).sort((a, b) => level(a) - level(b));
+  i = 0; $("btnEditCard").hidden = !(view.deck && canEdit(view.deck));
+  showOnly("learn"); show();
 }
 function show(){
   $("card").classList.remove("flip");
-  const k = countKnown(cur.cards);
-  $("score").textContent = k + " von " + cur.cards.length + " gewusst";
-  $("bar").style.width = (cur.cards.length ? k / cur.cards.length * 100 : 0) + "%";
+  fillBar($("bar"), cur.cards);
   if(!deck.length){
-    $("count").textContent = "";
-    $("front").innerHTML = '<div class="done">Alles gewusst. Tippe auf „Alle zeigen“ oder „Fortschritt löschen“.</div>';
+    $("count").textContent = ""; $("lvl").textContent = ""; $("lvl").className = ""; $("card").className = "card";
+    $("front").innerHTML = '<div class="done">Geschafft! Alle Karten dieser Runde sind in Stufe 3.<br><br>Tippe auf „← Set“.</div>';
     $("rear").textContent = ""; return;
   }
-  const c = deck[i];
+  const c = deck[i], st = level(c);
   $("count").textContent = (i+1) + " / " + deck.length;
+  $("lvl").textContent = STUFEN[st][0]; $("lvl").className = "s" + st;
+  $("card").className = "card s" + st;
   $("front").textContent = c.f;
   $("rear").textContent = c.a;
 }
 function flip(){ if(deck.length) $("card").classList.toggle("flip"); }
 function go(d){ if(!deck.length) return; i = (i + d + deck.length) % deck.length; show(); }
-function mark(v){
+function mark(right){
   if(!deck.length) return;
-  const c = deck[i];
-  if(v) known[c.k] = true; else delete known[c.k];
-  safeSet(KEY_KNOWN, known);
-  if(onlyOpen && v){ deck.splice(i,1); if(i >= deck.length) i = 0; show(); }
+  const c = deck[i], st = Math.min(3, Math.max(1, level(c) + (right ? 1 : -1)));
+  if(st === 1) delete lvl[c.k]; else lvl[c.k] = st;
+  safeSet(KEY_LVL, lvl);
+  // Karte verlässt die Runde, wenn sie in Stufe 3 aufsteigt (ausser man lernt gerade Stufe 3)
+  if(right && st === 3 && !cur.stages.includes(3)){ deck.splice(i, 1); if(i >= deck.length) i = 0; show(); }
   else go(1);
 }
 
@@ -404,18 +487,7 @@ $("btnShuffle").onclick = () => {
   for(let n = deck.length - 1; n > 0; n--){ const j = Math.floor(Math.random()*(n+1)); [deck[n],deck[j]] = [deck[j],deck[n]]; }
   i = 0; show();
 };
-$("btnOnly").onclick = () => {
-  onlyOpen = !onlyOpen;
-  $("btnOnly").textContent = onlyOpen ? "Alle zeigen" : "Nur offene";
-  build();
-};
-$("btnReset").onclick = () => {
-  if(!confirm("Fortschritt für dieses Set löschen?")) return;
-  cur.cards.forEach(c => delete known[c.k]);
-  safeSet(KEY_KNOWN, known);
-  build();
-};
-$("btnHome").onclick = () => { $("learn").hidden = true; $("home").hidden = false; renderHome(); };
+$("btnHome").onclick = () => { renderView(); showOnly("setv"); };
 document.addEventListener("keydown", e => {
   if($("learn").hidden) return;
   if(e.key === " " || e.key === "Enter"){ e.preventDefault(); flip(); }
@@ -479,7 +551,7 @@ function addCard(){
   return true;
 }
 function openEdit(){
-  $("home").hidden = true; $("edit").hidden = false;
+  showOnly("edit");
   $("dirs").innerHTML = "";
   folders.filter(x => x.dir).forEach(x => {
     const o = document.createElement("option"); o.value = x.dir; $("dirs").appendChild(o);
@@ -611,7 +683,7 @@ async function deleteFolder(fo){
 let ed = null;   // { deck, cards:[{f,a}], open, dirty }
 function openSet(deck, open){
   ed = { deck, cards: deck.cards.map(c => ({ f: c.f, a: c.a })), open, dirty: false };
-  $("home").hidden = $("learn").hidden = true; $("sedit").hidden = false;
+  showOnly("sedit");
   $("sTitle").textContent = deck.name;
   $("sWhere").textContent = deck.local ? "nur auf diesem Gerät" : "für alle (GitHub)";
   $("sNote").textContent = deck.local ? "Änderungen betreffen nur dich." : "Achtung: Änderungen an diesem Set sehen alle.";
@@ -660,14 +732,16 @@ async function deleteSet(){
 }
 function closeSet(){
   if(ed && ed.dirty && !confirm("Ungespeicherte Änderungen verwerfen?")) return;
-  ed = null;
-  $("sedit").hidden = true; $("home").hidden = false; renderHome();
+  const was = ed && ed.deck; ed = null;
+  // zurück zur Set-Übersicht, falls das Set noch existiert
+  const d = was && folders.flatMap(f => f.decks).find(x => was.local ? x.local === was.local : x.path === was.path);
+  if(d){ openView(d.name, d.cards, d); return; }
+  showOnly("home"); renderHome();
 }
 $("sAdd").onclick = () => { ed.cards.push({ f: "", a: "" }); ed.open = ed.cards.length - 1; ed.dirty = true; renderSet(); $("sList").lastChild.querySelector("textarea").focus(); };
 $("sSave").onclick = saveSet;
 $("sDel").onclick = deleteSet;
 $("sBack").onclick = closeSet;
-$("btnEditSet").onclick = () => openSet(cur.deck, -1);
 $("btnEditCard").onclick = () => {
   const c = deck[i];
   openSet(cur.deck, c ? cur.deck.cards.indexOf(c) : -1);
@@ -774,7 +848,7 @@ const CARD_SCHEMA = {
   }}}
 };
 const AMOUNT = {
-  1: "Erstelle pro inhaltlicher Folie etwa 1–2 Karten zu den wichtigsten Punkten.",
+  1: "MENGE – WICHTIG, hat Vorrang vor allem anderen: Erstelle NUR Karten zu Fällen/Sachverhalten und Fragen, die WÖRTLICH auf den Folien stehen (z. B. „Fall:“, „Sachverhalt“, „Frage:“, Übungs- oder Kontrollfragen, Fallbeispiele mit Fragestellung). Erfinde KEINE eigenen Fragen – auch nicht zu Definitionen, Begriffen oder Theorie. Vorderseite: der Fall bzw. die Frage so wie auf der Folie (Sachverhalt vollständig, inkl. Fragestellung). Rückseite: die Lösung aus dem Material (Lösungsfolien, Prüfschema, Randnotizen, Sprechernotizen) – vollständig und gegliedert. Gehören Fall und Lösung über mehrere Folien zusammen, wird daraus EINE Karte. Steht zu einer Frage keine Lösung im Material, beantworte sie knapp und nur aus dem Inhalt der Folien. Enthält dieser Abschnitt gar keine Fälle oder Fragen, gib nur einen Codeblock mit dem Text KEINE FÄLLE aus.",
   2: "Erstelle pro inhaltlicher Folie etwa 2–5 Karten: zu jedem Begriff, jeder Definition, jedem Artikel, jeder Voraussetzung bzw. jedem Prüfungsschritt, jeder Abgrenzung und jedem Fall/Beispiel eine eigene Karte.",
   3: "Erstelle pro inhaltlicher Folie 4–8 Karten: jedes einzelne Detail (jeder Begriff, jede Voraussetzung, jeder Artikel mit Absatz, jede Ausnahme, jedes Beispiel, jeder Fall mit Lösung) bekommt eine eigene Karte."
 };
@@ -834,7 +908,7 @@ async function aiCards(units, fileName, opts, progress){
   const size = 5, batches = [];
   for(let n = 0; n < units.length; n += size) batches.push(units.slice(n, n + size));
   const sysCreate = "Du bist Tutor:in an einer Schweizer Rechtsfakultät und erstellst aus Vorlesungsfolien Lern-Karteikarten für die Prüfungsvorbereitung.\n\n" + RULES + "\n\n" + AMOUNT[opts.amount];
-  const sysCheck = "Du bist eine strenge Korrektor:in für Lern-Karteikarten an einer Schweizer Rechtsfakultät. Du erhältst Folien und einen Entwurf von Karteikarten dazu. Prüfe jede Karte gegen die Folien und gib die verbesserte, vollständige Kartenliste zurück:\n• Fachlich falsche oder ungenaue Aussagen korrigieren.\n• Karten, bei denen Vorder- und Rückseite nicht zusammenpassen oder die Frage unklar ist, umschreiben.\n• Überladene Karten aufteilen, doppelte zusammenführen, sinnlose streichen.\n• Wichtige Inhalte der Folien, zu denen noch keine Karte existiert, als neue Karten ergänzen.\n\n" + RULES + "\n\n" + AMOUNT[opts.amount];
+  const sysCheck = "Du bist eine strenge Korrektor:in für Lern-Karteikarten an einer Schweizer Rechtsfakultät. Du erhältst Folien und einen Entwurf von Karteikarten dazu. Prüfe jede Karte gegen die Folien und gib die verbesserte, vollständige Kartenliste zurück:\n• Fachlich falsche oder ungenaue Aussagen korrigieren.\n• Karten, bei denen Vorder- und Rückseite nicht zusammenpassen oder die Frage unklar ist, umschreiben.\n• Überladene Karten aufteilen, doppelte zusammenführen, sinnlose streichen.\n" + (opts.amount === 1 ? "• Karten mit selbst erfundenen Fragen (die nicht als Fall oder Frage auf den Folien stehen) streichen; fehlende Fälle/Fragen der Folien ergänzen.\n\n" : "• Wichtige Inhalte der Folien, zu denen noch keine Karte existiert, als neue Karten ergänzen.\n\n") + RULES + "\n\n" + AMOUNT[opts.amount];
   const steps = batches.length * (opts.review ? 2 : 1);
   let done = 0;
   const tick = () => progress(++done, steps);
@@ -861,13 +935,18 @@ async function aiCards(units, fileName, opts, progress){
 /* ---------- Gratis: über den Claude-Chat (claude.ai) ----------
    Die Seite erstellt den Auftrag, man fügt ihn in den Chat ein und kopiert die Antwort zurück. */
 const PER_PART = { 1: 12, 2: 8, 3: 5 };
-function chatPrompt(us, fileName, amount, n, total){
+function chatPrompt(us, fileName, amount, n, total, ctx){
   return "Erstelle aus den folgenden Vorlesungsfolien Lern-Karteikarten für die Prüfungsvorbereitung (Schweizer Rechtsstudium).\n\n" + RULES + "\n\n" + AMOUNT[amount] +
-    "\n\nVorgehen: Erstelle zuerst alle Karten. Prüfe danach jede Karte selbst gegen die Folien (fachlich richtig? passen Frage und Antwort zusammen? fehlt etwas Wichtiges?) und korrigiere sie. Gib NUR die geprüfte Endfassung aus." +
+    "\n\nVorgehen: Erstelle zuerst alle Karten. Prüfe danach jede Karte selbst gegen die Folien (" + checkHint(amount) + ") und korrigiere sie. Gib NUR die geprüfte Endfassung aus." +
     "\n\nAusgabeformat – genau so, in EINEM Codeblock, ohne Einleitung, ohne Fettschrift, ohne Nummerierung der Karten:\n```\nFrage der ersten Karte\n----\nAntwort der ersten Karte\n====\nFrage der zweiten Karte\n----\nAntwort der zweiten Karte\n```\n\n" +
     "Datei: " + fileName + (total > 1 ? " – Teil " + n + " von " + total : "") + "\n\nFolien:\n\n" +
-    us.map(u => "### " + u.label + (u.title ? ": " + u.title : "") + "\n" + u.body).join("\n\n");
+    us.map(u => "### " + u.label + (u.title ? ": " + u.title : "") + "\n" + u.body).join("\n\n") +
+    (ctx && ctx.length ? "\n\n--- Folgende Folien NUR als Kontext, falls dort die Lösung zu einem Fall von oben steht (daraus KEINE eigenen Karten erstellen):\n\n" + ctx.map(u => "### " + u.label + (u.title ? ": " + u.title : "") + "\n" + u.body).join("\n\n") : "");
 }
+const checkHint = amount => amount === 1
+  ? "stammt jeder Fall bzw. jede Frage wirklich von den Folien? keine selbst erfundene Frage? ist die Lösung vollständig und richtig? fehlt ein Fall oder eine Frage der Folien?"
+  : "fachlich richtig? passen Frage und Antwort zusammen? fehlt etwas Wichtiges?";
+const noCases = t => /KEINE\s+F(Ä|AE)LLE/i.test(t || "");
 function readReply(t){
   t = t.replace(/\r/g, "");
   const blocks = [...t.matchAll(/```[^\n]*\n([\s\S]*?)(?:```|$)/g)].map(m => m[1]);
@@ -922,12 +1001,12 @@ function startWiz(attach){
 const range = us => us[0].label + (us.length > 1 ? " – " + us[us.length-1].label.replace(/^\D+/, "") : "");
 function wizPrompt(){
   const us = wiz.parts[wiz.i], n = wiz.i + 1, total = wiz.parts.length;
-  if(!wiz.attach) return chatPrompt(us, wiz.fileName, wiz.amount, n, total);
+  if(!wiz.attach) return chatPrompt(us, wiz.fileName, wiz.amount, n, total, wiz.amount === 1 && wiz.parts[wiz.i+1] ? wiz.parts[wiz.i+1].slice(0, 3) : null);
   const from = us[0].label.replace(/^\D+/, ""), to = us[us.length-1].label.replace(/^\D+/, "");
   const fmt = "\n\nAusgabeformat – genau so, in EINEM Codeblock, ohne Einleitung, ohne Fettschrift, ohne Nummerierung:\n```\nFrage der ersten Karte\n----\nAntwort der ersten Karte\n====\nFrage der zweiten Karte\n----\nAntwort der zweiten Karte\n```";
-  if(n > 1) return "Weiter mit " + wiz.word + " " + from + " bis " + to + " der angehängten Datei – gleiche Regeln, gleiche Menge, gleiches Format (ein Codeblock). Prüfe die Karten wieder selbst und gib nur die Endfassung aus." + fmt;
+  if(n > 1) return "Weiter mit " + wiz.word + " " + from + " bis " + to + " der angehängten Datei – gleiche Regeln, gleiche Menge, gleiches Format (ein Codeblock)." + (wiz.amount === 1 ? " Wieder NUR Fälle und Fragen, die auf den Folien stehen, mit ihrer Lösung – keine eigenen Fragen, keine Fälle aus früheren Teilen wiederholen. Ohne Fälle/Fragen: Codeblock mit KEINE FÄLLE." : "") + " Prüfe die Karten wieder selbst (" + checkHint(wiz.amount) + ") und gib nur die Endfassung aus." + fmt;
   return "Im Anhang ist die Datei „" + wiz.fileName + "“ mit " + wiz.all.length + " " + wiz.word + ". Erstelle daraus Lern-Karteikarten für die Prüfungsvorbereitung (Schweizer Rechtsstudium). Lies auch Text in Bildern, Tabellen und Grafiken.\n\n" + RULES + "\n\n" + AMOUNT[wiz.amount] +
-    "\n\nWir gehen die Datei in " + total + " Teilen durch. Bearbeite jetzt NUR " + wiz.word + " " + from + " bis " + to + ". Erstelle zuerst die Karten, prüfe dann jede selbst gegen die Folien (fachlich richtig? passen Frage und Antwort? fehlt etwas?) und gib NUR die geprüfte Endfassung aus." + fmt;
+    "\n\nWir gehen die Datei in " + total + " Teilen durch. Bearbeite jetzt NUR " + wiz.word + " " + from + " bis " + to + (wiz.amount === 1 ? " (steht die Lösung eines Falls erst auf späteren Seiten, nimm sie von dort dazu)" : "") + ". Erstelle zuerst die Karten, prüfe dann jede selbst gegen die Folien (" + checkHint(wiz.amount) + ") und gib NUR die geprüfte Endfassung aus." + fmt;
 }
 function renderWiz(){
   const box = $("chatBox"); box.innerHTML = "";
@@ -958,6 +1037,10 @@ function renderWiz(){
   };
   const take = text => {
     const cards = readReply(text || "");
+    if(!cards.length && noCases(text)){
+      wiz.log.push("✓ " + (total > 1 ? "Teil " + (wiz.i+1) + " (" + range(us) + ")" : range(us)) + ": keine Fälle/Fragen auf diesen " + wiz.word);
+      wiz.i++; renderWiz(); return;
+    }
     if(!cards.length){
       msg.className = "status pmsg err";
       msg.textContent = (text || "").trim() ? "Darin wurden keine Karten gefunden. Bitte in Claude das Kopieren-Symbol am Codeblock verwenden." : "Die Zwischenablage ist leer – zuerst in Claude die Antwort kopieren.";
@@ -1061,8 +1144,14 @@ function aiUi(){
   $("iGo").textContent = m === "chat" ? "Datei lesen" : "Karten erzeugen";
 }
 document.querySelectorAll('input[name="iMode"]').forEach(r => r.addEventListener("change", aiUi));
-$("btnShare").onclick = () => {
-  const d = cur.deck;
+$("vDel").onclick = async () => {
+  const d = view.deck;
+  if(!d || !confirm("Set „" + d.name + "“ mit allen Karten löschen?" + (d.local ? "" : "\n\nEs wird auf GitHub für alle gelöscht."))) return;
+  try{ await writeDeck(d, []); showOnly("home"); renderHome(); }
+  catch(e){ alert("Nicht gelöscht: " + e.message); }
+};
+$("vShare").onclick = () => {
+  const d = view.deck;
   const text = d.text || d.cards.map(c => c.f + "\n----\n" + c.a).join("\n\n====\n\n");
   const name = clean(d.name) + ".txt";
   const file = new File([text + "\n"], name, { type: "text/plain" });
@@ -1078,7 +1167,7 @@ $("iGo").onclick = importFile;
 $("eNewDir").onclick = newDir;
 $("btnNewDir").onclick = newDir;
 $("btnNew").onclick = openEdit;
-$("btnEditBack").onclick = () => { $("edit").hidden = true; $("home").hidden = false; renderHome(); };
+$("btnEditBack").onclick = () => { showOnly("home"); renderHome(); };
 $("eAdd").onclick = addCard;
 $("eSave").onclick = () => save(false);
 $("ePub").onclick = () => save(true);
