@@ -45,6 +45,14 @@ button.no{background:var(--no);border-color:var(--no);color:#fff}
 .tools button{font-weight:500;font-size:14px}
 .done{text-align:center;font-family:system-ui,sans-serif}
 @media (prefers-reduced-motion:reduce){.card{transition:none}}
+.editor label{display:block;font:600 13px system-ui,sans-serif;margin:14px 0 4px}
+input,textarea{width:100%;font:16px system-ui,sans-serif;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px}
+textarea{min-height:110px;resize:vertical}
+.pend{font:14px system-ui,sans-serif;margin:12px 0;padding-left:22px}
+.pend li{margin-bottom:6px}
+.pend button{min-width:0;flex:0 0 auto;padding:2px 8px;margin-left:6px;font-size:13px}
+#btnNew{margin-bottom:18px}
+#eInfo a{color:inherit}
 </style>
 </head>
 <body>
@@ -52,6 +60,7 @@ button.no{background:var(--no);border-color:var(--no);color:#fff}
 
 <section id="home">
   <h1>Karteikarten</h1>
+  <button id="btnNew" class="deck all"><span class="t">+ Neue Karten hinzufügen</span></button>
   <div id="list"><p class="msg">Lade Themen …</p></div>
 </section>
 
@@ -75,6 +84,32 @@ button.no{background:var(--no);border-color:var(--no);color:#fff}
     <button id="btnShuffle">Mischen</button>
     <button id="btnOnly">Nur offene</button>
     <button id="btnReset">Fortschritt löschen</button>
+  </div>
+</section>
+
+<section id="edit" hidden>
+  <header><button id="btnEditBack">← Übersicht</button></header>
+  <h1>Neue Karten</h1>
+  <div class="editor">
+    <div id="repoBox" hidden>
+      <label for="repo">GitHub-Repository (Benutzer/Repo)</label>
+      <input id="repo" placeholder="meinname/karteikarten" autocapitalize="off">
+    </div>
+    <label for="eDir">Ordner (Thema)</label>
+    <input id="eDir" list="dirs" placeholder="bestehend wählen oder neuen Namen tippen" autocomplete="off">
+    <datalist id="dirs"></datalist>
+    <label for="eSet">Set (Datei)</label>
+    <input id="eSet" list="sets" placeholder="z. B. 14 Irrtumslehre" autocomplete="off">
+    <datalist id="sets"></datalist>
+    <label for="eF">Vorderseite</label>
+    <textarea id="eF"></textarea>
+    <label for="eA">Rückseite</label>
+    <textarea id="eA"></textarea>
+    <div class="row" style="margin-top:10px"><button id="eAdd">Karte zur Liste hinzufügen</button></div>
+    <ol id="pend" class="pend"></ol>
+    <div class="row"><button class="ok" id="eSave">Auf GitHub speichern</button></div>
+    <p id="eInfo" class="hint"></p>
+    <textarea id="eCopy" hidden readonly></textarea>
   </div>
 </section>
 
@@ -147,7 +182,7 @@ async function loadAll(){
         return cards.length ? { name: nice(file), path, cards } : null;
       }catch(e){ return null; }
     }))).filter(Boolean);
-    if(decks.length) out.push({ name: name ? nice(name) : "Allgemein", decks });
+    if(decks.length) out.push({ name: name ? nice(name) : "Allgemein", dir: name, decks });
   }
   folders = out;
 }
@@ -260,6 +295,115 @@ document.addEventListener("keydown", e => {
   else if(e.key === "ArrowRight") go(1);
   else if(e.key === "ArrowLeft") go(-1);
 });
+
+/* ---------- Neue Karten direkt auf der Seite erfassen ---------- */
+const KEY_REPO = "karten-repo";
+let pend = [], branch = "main";
+const clean = s => s.trim().replace(/[\\\/:*?"<>|#%]+/g, " ").trim().replace(/\s+/g, "_");
+
+function repoInfo(){
+  const h = location.hostname;
+  if(h.endsWith(".github.io")){
+    let repo = location.pathname.split("/").filter(Boolean)[0];
+    if(!repo || /\.html?$/i.test(repo)) repo = h;
+    return { owner: h.split(".")[0], repo };
+  }
+  const v = String(safeGet(KEY_REPO) || "").split("/");
+  return (v.length === 2 && v[0].trim() && v[1].trim()) ? { owner: v[0].trim(), repo: v[1].trim() } : null;
+}
+function fillSets(){
+  const d = clean($("eDir").value).toLowerCase();
+  const fo = folders.find(x => x.dir.toLowerCase() === d);
+  $("sets").innerHTML = "";
+  (fo ? fo.decks : []).forEach(k => {
+    const o = document.createElement("option");
+    o.value = k.path.split("/").pop().replace(/\.txt$/i, "");
+    $("sets").appendChild(o);
+  });
+}
+function renderPend(){
+  const ol = $("pend");
+  ol.innerHTML = "";
+  pend.forEach((c, n) => {
+    const li = document.createElement("li");
+    li.appendChild(document.createTextNode(c.f.replace(/\s+/g, " ").slice(0, 60) + (c.f.length > 60 ? " …" : "")));
+    const b = document.createElement("button");
+    b.textContent = "×";
+    b.setAttribute("aria-label", "Karte entfernen");
+    b.onclick = () => { pend.splice(n, 1); renderPend(); };
+    li.appendChild(b);
+    ol.appendChild(li);
+  });
+  $("eSave").textContent = pend.length ? "Auf GitHub speichern (" + pend.length + " Karten)" : "Auf GitHub speichern";
+}
+function addCard(){
+  const f = $("eF").value.trim(), a = $("eA").value.trim();
+  if(!f || !a){ $("eInfo").textContent = "Vorder- und Rückseite ausfüllen."; return false; }
+  pend.push({ f, a });
+  $("eF").value = ""; $("eA").value = "";
+  $("eInfo").textContent = "";
+  renderPend();
+  $("eF").focus();
+  return true;
+}
+function openEdit(){
+  $("home").hidden = true; $("edit").hidden = false;
+  $("dirs").innerHTML = "";
+  folders.filter(x => x.dir).forEach(x => {
+    const o = document.createElement("option"); o.value = x.dir; $("dirs").appendChild(o);
+  });
+  const r = repoInfo();
+  $("repoBox").hidden = !!r;
+  if(!r) $("repo").value = safeGet(KEY_REPO) || "";
+  else fetch("https://api.github.com/repos/" + r.owner + "/" + r.repo).then(x => x.json()).then(j => { if(j && j.default_branch) branch = j.default_branch; }).catch(() => {});
+  fillSets(); renderPend();
+}
+function copyText(t){
+  try{ navigator.clipboard.writeText(t).catch(() => {}); }catch(e){}
+  $("eCopy").value = t; $("eCopy").hidden = false;
+}
+function save(){
+  const info = $("eInfo");
+  if($("eF").value.trim() && $("eA").value.trim()) addCard();
+  if(!pend.length){ info.textContent = "Füge zuerst mindestens eine Karte hinzu."; return; }
+  const dir = clean($("eDir").value), set = clean($("eSet").value).replace(/\.txt$/i, "");
+  if(!dir || !set){ info.textContent = "Bitte Ordner und Set angeben."; return; }
+  let r = repoInfo();
+  if(!r){
+    const v = $("repo").value.trim();
+    if(v.split("/").length !== 2){ info.textContent = "Bitte das Repository als Benutzer/Repo angeben."; return; }
+    safeSet(KEY_REPO, v); r = repoInfo();
+  }
+  const body = pend.map(c => c.f + "\n----\n" + c.a).join("\n\n====\n\n");
+  const fo = folders.find(x => x.dir.toLowerCase() === dir.toLowerCase());
+  const ex = fo && fo.decks.find(d => d.path.toLowerCase() === (fo.dir + "/" + set + ".txt").toLowerCase());
+  const enc = p => p.split("/").map(encodeURIComponent).join("/");
+  const root = "https://github.com/" + r.owner + "/" + r.repo;
+  let url, msg;
+  $("eCopy").hidden = true;
+  if(ex){
+    copyText("\n\n====\n\n" + body + "\n");
+    url = root + "/edit/" + branch + "/themen/" + enc(ex.path);
+    msg = "Set existiert schon. Die neuen Karten sind kopiert: auf GitHub ans Ende der Datei tippen, einfügen, dann Commit changes.";
+  }else{
+    const path = "themen/" + dir + "/" + set + ".txt";
+    url = root + "/new/" + branch + "?filename=" + enc(path) + "&value=" + encodeURIComponent(body + "\n");
+    if(url.length > 7000){
+      copyText(body + "\n");
+      url = root + "/new/" + branch + "?filename=" + enc(path);
+      msg = "Text ist lang und kopiert: auf GitHub ins Textfeld einfügen, dann Commit changes.";
+    }else msg = "GitHub ist offen und schon ausgefüllt: nur noch Commit changes tippen.";
+  }
+  const w = window.open(url, "_blank");
+  info.textContent = msg + " ";
+  if(!w){ const a = document.createElement("a"); a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = "GitHub öffnen"; info.appendChild(a); }
+  pend = []; renderPend();
+}
+$("btnNew").onclick = openEdit;
+$("btnEditBack").onclick = () => { $("edit").hidden = true; $("home").hidden = false; renderHome(); };
+$("eAdd").onclick = addCard;
+$("eSave").onclick = save;
+$("eDir").addEventListener("input", fillSets);
 
 loadAll().then(renderHome);
 </script>
