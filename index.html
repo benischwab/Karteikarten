@@ -466,7 +466,7 @@ async function saveDirect(r, dir, set, body){
       text = b64dec(j.content).replace(/\s+$/, "") + "\n\n====\n\n" + body + "\n";
     }else if(g.status === 401){ throw new Error("Token ungültig oder abgelaufen."); }
     else if(g.status !== 404){ throw new Error("GitHub antwortet mit " + g.status + "."); }
-    const put = await fetch(api, { method: "PUT", headers: h, body: JSON.stringify({
+    const put = await fetch(api, { method: "PUT", headers: { ...h, "Content-Type": "application/json" }, body: JSON.stringify({
       message: (sha ? "Karten ergänzt: " : "Neues Set: ") + dir + "/" + set + " (" + pend.length + " Karten)",
       content: b64enc(text), ...(sha ? { sha } : {})
     })});
