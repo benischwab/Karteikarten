@@ -121,6 +121,13 @@ header .back{flex:0 0 auto}
 .sn .im figure{margin:0;position:relative}
 .sn .im img{max-width:min(100%,520px);max-height:320px;border-radius:8px;border:1px solid var(--line);display:block;cursor:zoom-in;background:#fff}
 .sn .im .rm{position:absolute;top:4px;right:4px;min-width:0;padding:2px 8px;font-size:13px;opacity:.9}
+.sn .gx{margin:4px 0 10px 18px;position:relative;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;overflow-x:auto;color:#1c2433}
+.sn .gx .gv{min-height:20px}
+.sn .gx svg{max-width:100%;height:auto;display:block;margin:0 auto}
+.sn .gx .ge{position:absolute;top:6px;right:6px;min-width:0;padding:2px 9px;font-size:14px;flex:none}
+.gt{border-collapse:collapse;width:100%;font:14px/1.35 system-ui,sans-serif;color:#1c2433}
+.gt th,.gt td{border:1px solid #cfd6e0;padding:6px 8px;text-align:left;vertical-align:top;white-space:pre-line}
+.gt th{background:#eef1f5;font-weight:650}
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center;z-index:10}
 .sheetIn{background:var(--bg);width:100%;max-width:560px;border-radius:16px 16px 0 0;padding:14px 16px 20px;max-height:85vh;overflow:auto}
 .sheetIn p{font:600 14px system-ui,sans-serif;margin:0 0 10px;color:var(--muted)}
@@ -311,10 +318,13 @@ summary{cursor:pointer;font-weight:600}
   <header><button id="schNewBack">← Schemas</button></header>
   <h1>Neues Schema</h1>
   <div class="box">
-    <h2>Aus Datei oder Bildern (gratis mit Claude-Chat)</h2>
-    <p>PowerPoint, PDF, Word oder Fotos/Screenshots von Folien. Claude erstellt daraus ein Prüfungsschema, das du danach frei bearbeiten kannst.</p>
+    <h2>Mit Claude erstellen (gratis)</h2>
+    <p>Wähle eine Datei (PowerPoint, PDF, Word, Fotos/Screenshots von Folien) <b>und/oder</b> beschreibe in Stichworten, was du brauchst. Danach kannst du das Schema frei bearbeiten.</p>
+    <label for="schFile">Datei oder Bilder (optional)</label>
     <input type="file" id="schFile" accept=".pptx,.pdf,.docx,.txt,.md,image/*" multiple>
-    <div class="row" style="margin-top:8px"><button id="schRead">Datei lesen</button></div>
+    <label for="schWish">Stichworte (optional)</label>
+    <textarea id="schWish" style="min-height:70px" placeholder="z. B. „Notwehr Art. 15 StGB mit Notwehrexzess und Putativnotwehr“ oder „nur Rechtswidrigkeit, mit Fallbeispielen“"></textarea>
+    <div class="row" style="margin-top:8px"><button id="schRead">Weiter</button></div>
     <p id="schStatus" class="status"></p>
     <div id="schChat" hidden></div>
   </div>
