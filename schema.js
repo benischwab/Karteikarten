@@ -43,7 +43,8 @@ async function dbDel(id){
    doc  = { id, title, updated, nodes:[node], gallery:[dataURL] }
    node = { id, t, note, imgs:[dataURL], open, kids:[node] }            */
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-const mk = (t, kids, note) => ({ id: uid(), t: t || "", note: note || "", imgs: [], open: true, kids: kids || [] });
+const mk = (t, kids, note) => ({ id: uid(), t: t || "", note: note || "", imgs: [], gfx: [], open: true, kids: kids || [] });
+const gf = n => n.gfx || (n.gfx = []);   // Grafiken: [{ type: "mermaid" | "table", code }]
 function walk(nodes, fn, parent){ nodes.forEach((n, i) => { fn(n, nodes, i, parent); walk(n.kids, fn, n); }); }
 function find(id){ let r = null; walk(doc.nodes, (n, arr, i, parent) => { if(n.id === id) r = { n, arr, i, parent }; }); return r; }
 const plain = n => ({ ...n, kids: n.kids.map(plain) });
@@ -67,6 +68,18 @@ function parseOutline(text){
     if(h && !title && !roots.length){ title = h[1].trim(); return; }
     const b = line.match(/^(\s*)(?:[-*•–]|\d+\.(?=\s))\s+(.*)$/);
     const q = line.match(/^(\s*)>\s?(.*)$/);
+    const g = line.match(/^\s*~\s?(.*)$/);
+    if(g){
+      if(!last) return;
+      const k = g[1].trim().toLowerCase();
+      if(/^(mermaid|tabelle|table)$/.test(k)) gf(last).push({ type: k === "mermaid" ? "mermaid" : "table", code: "" });
+      else{
+        const L = gf(last);
+        if(!L.length) L.push({ type: /^\s*\|/.test(g[1]) ? "table" : "mermaid", code: "" });
+        const cur = L[L.length - 1]; cur.code += (cur.code ? "\n" : "") + g[1];
+      }
+      return;
+    }
     if(b && !q){
       const ind = b[1].length, node = mk(b[2].trim());
       while(stack.length && stack[stack.length-1].indent >= ind) stack.pop();
@@ -78,6 +91,7 @@ function parseOutline(text){
       last.note = last.note ? last.note + "\n" + s : s;
     }else if(h){ roots.push(last = mk(h[1].trim())); stack.length = 0; stack.push({ indent: -1, node: last }); }
   });
+  walk(roots, n => { n.gfx = gf(n).filter(x => x.code.trim()); });
   return { title, nodes: roots };
 }
 function toOutline(d){
@@ -85,6 +99,7 @@ function toOutline(d){
   const rec = (ns, lv) => ns.forEach(n => {
     out.push("  ".repeat(lv) + "- " + n.t);
     if(n.note) n.note.split("\n").forEach(l => out.push("  ".repeat(lv + 1) + "> " + l));
+    gf(n).forEach(g => { out.push("  ".repeat(lv + 1) + "~ " + (g.type === "table" ? "tabelle" : "mermaid")); g.code.split("\n").forEach(l => out.push("  ".repeat(lv + 1) + "~ " + l)); });
     rec(n.kids, lv + 1);
   });
   rec(d.nodes, 0);
@@ -136,10 +151,23 @@ const TEMPLATES = [
       > Art. 12 Abs. 2 StGB: Vorsätzlich handelt, wer die Tat mit Wissen und Willen ausführt. Vorsätzlich handelt bereits, wer die Verwirklichung der Tat für möglich hält und in Kauf nimmt.
       > Wissen (kognitives Element) + Willen (voluntatives Element) = Vorsatz.
       > Der Vorsatz muss sich auf alle objektiven Tatbestandsmerkmale beziehen und im Zeitpunkt der Tat vorliegen.
+      ~ mermaid
+      ~ flowchart LR
+      ~   A["Wissen (kognitiv)"] --> P(("+"))
+      ~   B["Willen (voluntativ)"] --> P
+      ~   P --> V["Vorsatz – Art. 12 Abs. 2 StGB"]
       - Vorsatzarten: Überblick
         > Direkter Vorsatz 1. Grades (Absicht): Es kommt dem Täter gerade auf den Erfolg an.
         > Direkter Vorsatz 2. Grades (Wissentlichkeit): Der Täter weiss, dass der Erfolg als sichere Folge seines Handelns eintritt.
         > Eventualvorsatz (Art. 12 Abs. 2 Satz 2): Der Täter hält den Erfolg für möglich und nimmt ihn in Kauf (findet sich damit ab).
+        ~ tabelle
+        ~ | | Wissen | Willen |
+        ~ |---|---|---|
+        ~ | Direkter Vorsatz 1. Grades (Absicht) | hält den Erfolg mindestens für möglich | Erfolg ist sein Ziel |
+        ~ | Direkter Vorsatz 2. Grades | weiss, dass der Erfolg sicher eintritt | nimmt die sichere Folge hin |
+        ~ | Eventualvorsatz | hält den Erfolg für möglich | nimmt ihn in Kauf |
+        ~ | Bewusste Fahrlässigkeit | hält den Erfolg für möglich | vertraut darauf, dass er nicht eintritt |
+        ~ | Unbewusste Fahrlässigkeit | denkt pflichtwidrig nicht daran | – |
       - Abgrenzung Eventualvorsatz – bewusste Fahrlässigkeit
         > Gemeinsam: Der Täter hält den Erfolg für möglich (Wissensseite gleich).
         > Eventualvorsatz: nimmt den Erfolg in Kauf.
@@ -155,6 +183,14 @@ const TEMPLATES = [
   - 1. Gesetzlich erlaubte Handlung (Art. 14 StGB)
     > Wer handelt, wie es das Gesetz gebietet oder erlaubt, verhält sich rechtmässig (z. B. Festnahme durch Polizei).
   - 2. Rechtfertigende Notwehr (Art. 15 StGB)
+    ~ mermaid
+    ~ flowchart TD
+    ~   A["Angriff ohne Recht?"] -->|nein| X["keine Notwehr"]
+    ~   A -->|ja| B["gegenwärtig oder unmittelbar drohend?"]
+    ~   B -->|nein| X
+    ~   B -->|ja| C["Abwehr den Umständen angemessen?"]
+    ~   C -->|ja| D["gerechtfertigt – Art. 15 StGB"]
+    ~   C -->|nein| E["Notwehrexzess – Art. 16 StGB"]
     - a) Notwehrlage
       > Ohne Recht angegriffen oder unmittelbar mit einem Angriff bedroht.
     - b) Notwehrhandlung
@@ -302,7 +338,7 @@ function caretEnd(el){
 }
 function nodeEl(n, depth){
   const w = document.createElement("div");
-  const has = n.kids.length || n.note || n.imgs.length;
+  const has = n.kids.length || n.note || n.imgs.length || gf(n).length;
   w.className = "sn d" + Math.min(depth, 5) + (has ? " has" : "") + (n.open || !has ? "" : " closed");
   w.dataset.id = n.id;
   w.innerHTML = '<div class="sr"><span class="mk">•</span><div class="tx" contenteditable="plaintext-only" spellcheck="false"></div><button class="tg" aria-label="Auf-/Zuklappen"></button><button class="mn" aria-label="Optionen">⋯</button></div><div class="bd"></div>';
@@ -333,8 +369,127 @@ function nodeEl(n, depth){
     });
     bd.appendChild(im);
   }
+  gf(n).forEach((g, k) => {
+    const f = document.createElement("figure"); f.className = "gx";
+    f.innerHTML = '<div class="gv"></div><button class="ge noprint" aria-label="Grafik bearbeiten">✎</button>';
+    drawGfx(g, f.querySelector(".gv"));
+    f.querySelector(".ge").onclick = () => editGfx(n, k);
+    bd.appendChild(f);
+  });
   n.kids.forEach(k => bd.appendChild(nodeEl(k, depth + 1)));
   return w;
+}
+
+/* ---------- Grafiken (Mermaid-Diagramme und Tabellen) ---------- */
+const MERMAID = "https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js";
+let mmReady = null, mmN = 0;
+function mm(){
+  return mmReady || (mmReady = lib(MERMAID, "mermaid").then(m => {
+    m.initialize({ startOnLoad: false, securityLevel: "strict", theme: "default", fontFamily: "system-ui, sans-serif", flowchart: { useMaxWidth: true, htmlLabels: false } });
+    return m;
+  }));
+}
+function tableEl(code){
+  const sep = /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/;
+  const rows = code.split("\n").filter(l => l.includes("|") && !sep.test(l))
+    .map(l => l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map(c => c.trim().replace(/\*\*/g, "")));
+  const t = document.createElement("table"); t.className = "gt";
+  rows.forEach((r, i) => {
+    const tr = document.createElement("tr");
+    r.forEach(c => { const td = document.createElement(i === 0 ? "th" : "td"); td.textContent = c.replace(/<br\s*\/?>/gi, "\n"); tr.appendChild(td); });
+    t.appendChild(tr);
+  });
+  return t;
+}
+async function drawGfx(g, box){
+  box.innerHTML = "";
+  if(g.type === "table"){ box.appendChild(tableEl(g.code)); return; }
+  box.innerHTML = '<p class="hint">Grafik wird gezeichnet …</p>';
+  try{
+    const m = await mm();
+    const { svg } = await m.render("mmd" + (++mmN), g.code);
+    box.innerHTML = svg;
+  }catch(e){
+    box.innerHTML = '<p class="status err">Grafik konnte nicht gezeichnet werden. Tippe auf ✎, um sie zu korrigieren oder mit Claude neu zu erstellen.</p>';
+    const junk = document.getElementById("dmmd" + mmN); if(junk) junk.remove();   // Mermaid lässt bei Fehlern ein Element zurück
+  }
+}
+// Antwort von Claude → Grafik
+function readGfx(text){
+  const t = String(text || "").replace(/\r/g, "");
+  const blocks = [...t.matchAll(/```\s*(\w*)[^\n]*\n([\s\S]*?)(?:```|$)/g)];
+  for(const b of blocks){
+    const code = b[2].trim();
+    if(/^mermaid$/i.test(b[1]) || /^(flowchart|graph|timeline|mindmap|sequenceDiagram|stateDiagram|classDiagram|quadrantChart|journey)\b/.test(code)) return { type: "mermaid", code };
+    if(/^\s*\|/m.test(code)) return { type: "table", code };
+  }
+  const tl = t.split("\n").filter(l => /^\s*\|.*\|\s*$/.test(l));
+  if(tl.length >= 2) return { type: "table", code: tl.join("\n") };
+  if(/^\s*(flowchart|graph)\s/m.test(t)) return { type: "mermaid", code: t.slice(t.search(/(flowchart|graph)\s/)).trim() };
+  return null;
+}
+const GFX_KINDS = [
+  ["auto", "Passende Grafik (Claude wählt)", "Wähle die Form, die das Thema am besten verständlich macht: Ablaufdiagramm, Übersicht, Formel oder Tabelle."],
+  ["ablauf", "Ablaufdiagramm / Prüfreihenfolge", "Erstelle ein Ablaufdiagramm der Prüfreihenfolge mit Ja/Nein-Abzweigungen (Mermaid flowchart TD)."],
+  ["tabelle", "Tabelle / Gegenüberstellung", "Erstelle eine Tabelle, die die Begriffe bzw. Varianten anhand ihrer Merkmale gegenüberstellt (Markdown-Tabelle)."],
+  ["formel", "Formel / Merkbild", "Erstelle ein einfaches Merkbild in Form einer Formel, z. B. „Wissen + Willen = Vorsatz“ (Mermaid flowchart LR mit wenigen Kästchen)."],
+  ["uebersicht", "Übersicht / Abgrenzung", "Erstelle eine Übersicht, die zeigt, wie die Unterbegriffe zusammenhängen bzw. voneinander abzugrenzen sind (Mermaid flowchart TD)."],
+  ["zeit", "Zeitstrahl", "Erstelle einen Zeitstrahl (Mermaid timeline)."]
+];
+function pathOf(n){
+  const p = []; let f = find(n.id);
+  while(f){ p.unshift(f.n.t); f = f.parent ? find(f.parent.id) : null; }
+  return p.filter(Boolean).join(" › ");
+}
+function gfxPrompt(n, kind){
+  const k = GFX_KINDS.find(x => x[0] === kind) || GFX_KINDS[0];
+  const ctx = [];
+  if(n.note) ctx.push("Notizen dazu:\n" + n.note);
+  if(n.kids.length) ctx.push("Unterpunkte:\n" + n.kids.map(c => "- " + c.t + (c.note ? " (" + c.note.replace(/\s+/g, " ").slice(0, 160) + ")" : "")).join("\n"));
+  return "Erstelle eine übersichtliche Lerngrafik für das Schweizer Rechtsstudium zum Thema: „" + pathOf(n) + "“ (aus dem Prüfungsschema „" + doc.title + "“).\n\n" + k[2] +
+    "\n\nRegeln:\n• Kurze Beschriftungen (höchstens etwa 6 Wörter pro Kästchen), Artikel nur angeben, wenn du sicher bist. Schweizer Rechtschreibung (ss).\n• Mermaid: alle Beschriftungen in Anführungszeichen, z. B. A[\"Notwehrlage?\"] -->|ja| B[\"Abwehr angemessen?\"]; keine Leerzeilen; keine Kommentare.\n• Gib NUR einen einzigen Codeblock aus (```mermaid … ``` oder die Tabelle), ohne Erklärung davor oder danach." +
+    (ctx.length ? "\n\n" + ctx.join("\n\n") : "");
+}
+function gfxDialog(n, k){
+  const wrap = document.createElement("div");
+  const p1 = document.createElement("p"); p1.textContent = "① Art wählen → Auftrag wird kopiert und Claude geöffnet:";
+  wrap.appendChild(p1);
+  GFX_KINDS.forEach(([id, label]) => {
+    const b = document.createElement("button"); b.textContent = label;
+    b.onclick = () => { const ok = copy(gfxPrompt(n, id)); window.open("https://claude.ai/new", "_blank"); msg.className = "status"; msg.textContent = ok ? "Kopiert! In Claude einfügen, senden, dann die Antwort (Codeblock) kopieren." : "Kopieren nicht möglich."; };
+    wrap.appendChild(b);
+  });
+  const p2 = document.createElement("p"); p2.textContent = "② Antwort von Claude einfügen:"; p2.style.marginTop = "12px";
+  const paste = document.createElement("button"); paste.className = "ok"; paste.textContent = "② Antwort von Claude einfügen";
+  const ta = document.createElement("textarea"); ta.placeholder = "… oder hier hinein einfügen (lange tippen → Einsetzen)"; ta.style.minHeight = "70px";
+  const msg = document.createElement("p"); msg.className = "status";
+  const take = text => {
+    const g = readGfx(text);
+    if(!g){ msg.className = "status err"; msg.textContent = (text || "").trim() ? "Keine Grafik erkannt – bitte in Claude das Kopieren-Symbol am Codeblock verwenden." : "Die Zwischenablage ist leer."; return; }
+    closeSheet();
+    if(k >= 0) gf(n)[k] = g; else gf(n).push(g);
+    n.open = true; save(); render();
+  };
+  paste.onclick = async () => { try{ take(await navigator.clipboard.readText()); }catch(e){ msg.className = "status err"; msg.textContent = "Kein Zugriff auf die Zwischenablage – bitte lange ins Feld tippen → Einsetzen."; ta.focus(); } };
+  ta.addEventListener("paste", () => setTimeout(() => take(ta.value), 0));
+  wrap.append(p2, paste, ta, msg);
+  sheet((k >= 0 ? "Grafik neu erstellen: " : "Grafik zu: ") + (n.t || "Punkt"), [{ el: wrap }]);
+}
+function editGfx(n, k){
+  const g = gf(n)[k];
+  const wrap = document.createElement("div");
+  const p = document.createElement("p"); p.textContent = g.type === "table" ? "Tabelle (jede Zeile mit | trennen):" : "Diagramm-Code (Mermaid) – Texte in Anführungszeichen ändern:";
+  const ta = document.createElement("textarea"); ta.value = g.code; ta.style.minHeight = "180px"; ta.style.fontFamily = "ui-monospace, Menlo, monospace"; ta.style.fontSize = "14px";
+  const ok = document.createElement("button"); ok.className = "ok"; ok.textContent = "Übernehmen";
+  ok.onclick = () => { g.code = ta.value; closeSheet(); save(); render(); };
+  const re = document.createElement("button"); re.textContent = "Mit Claude neu erstellen";
+  re.onclick = () => { closeSheet(); gfxDialog(n, k); };
+  const up = document.createElement("button"); up.textContent = "↑ Grafik nach oben"; up.hidden = k === 0;
+  up.onclick = () => { const L = gf(n); [L[k-1], L[k]] = [L[k], L[k-1]]; closeSheet(); save(); render(); };
+  const del = document.createElement("button"); del.className = "no"; del.textContent = "Grafik löschen";
+  del.onclick = () => { if(confirm("Grafik löschen?")){ gf(n).splice(k, 1); closeSheet(); save(); render(); } };
+  wrap.append(p, ta, ok, re, up, del);
+  sheet("Grafik bearbeiten", [{ el: wrap }]);
 }
 
 /* ---------- Strukturänderungen ---------- */
@@ -353,7 +508,7 @@ function move(n, d){
   [f.arr[f.i], f.arr[j]] = [f.arr[j], f.arr[f.i]]; save(); render(n.id);
 }
 function remove(n, ask){
-  if(ask !== false && (n.kids.length || n.note || n.imgs.length) && !confirm("„" + (n.t || "Punkt") + "“ mit allen Unterpunkten löschen?")) return;
+  if(ask !== false && (n.kids.length || n.note || n.imgs.length || gf(n).length) && !confirm("„" + (n.t || "Punkt") + "“ mit allen Unterpunkten löschen?")) return;
   const f = find(n.id); f.arr.splice(f.i, 1);
   if(!doc.nodes.length) doc.nodes.push(mk(""));
   save();
@@ -364,7 +519,7 @@ function remove(n, ask){
 function keys(e, n, tx){
   if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); n.t = tx.textContent; addAfter(n); }
   else if(e.key === "Tab"){ e.preventDefault(); n.t = tx.textContent; e.shiftKey ? outdent(n) : indent(n); }
-  else if(e.key === "Backspace" && !tx.textContent && !n.kids.length && !n.note && !n.imgs.length){ e.preventDefault(); remove(n, false); }
+  else if(e.key === "Backspace" && !tx.textContent && !n.kids.length && !n.note && !n.imgs.length && !gf(n).length){ e.preventDefault(); remove(n, false); }
 }
 
 /* ---------- Auswahlblatt (Menü) ---------- */
@@ -396,6 +551,7 @@ function menu(n){
       if(nt){ nt.focus(); caretEnd(nt); }
     } },
     { label: "+ Bild", fn: () => pickImage(n) },
+    { label: "+ Grafik mit Claude (Ablauf, Tabelle, Formel …)", fn: () => gfxDialog(n, -1) },
     ...(f.i > 0 ? [{ label: "↑ nach oben", fn: () => move(n, -1) }] : []),
     ...(f.i < f.arr.length - 1 ? [{ label: "↓ nach unten", fn: () => move(n, 1) }] : []),
     ...(f.i > 0 ? [{ label: "→ einrücken (Unterpunkt vom Punkt darüber)", fn: () => indent(n) }] : []),
@@ -458,8 +614,8 @@ function improve(){
 }
 
 /* ---------- Neues Schema ---------- */
-const FORMAT = "\n\nAusgabeformat – genau so, in EINEM Codeblock, ohne Einleitung, ohne Fettschrift. Erste Zeile „# Titel“, dann eine verschachtelte Liste mit „- “ und 2 Leerzeichen Einrückung pro Ebene. Notizen (Definitionen, Artikel, Merksätze, Beispiele) stehen direkt unter dem Punkt in Zeilen, die mit „> “ beginnen:\n```\n# Prüfungsschema: Titel\n- I. Tatbestand\n  - 1. Objektiver Tatbestand\n    - a) Tathandlung\n      > Definition …\n    - b) Erfolg\n  - 2. Subjektiver Tatbestand\n- II. Rechtswidrigkeit\n- III. Schuld\n```";
-const RULES_S = "Regeln:\n• Gliederung wie ein juristisches Prüfungsschema: I., II., III. → 1., 2., 3. → a), b) → aa), bb). Die Nummerierung gehört zum Text des Punkts.\n• Die Punkte selbst sind kurz (Prüfungspunkt/Stichwort). Definitionen, Voraussetzungen, Artikel (z. B. Art. 12 Abs. 2 StGB), Streitstände, Abgrenzungen und kurze Beispiele aus dem Material gehören als Notiz unter den passenden Punkt.\n• Reihenfolge = Prüfungsreihenfolge beim Lösen eines Falls.\n• Nur Inhalte aus dem Material verwenden, nichts erfinden. Organisatorisches, Literatur und Deckblätter weglassen.\n• Enthält das Material mehrere eigenständige Delikte oder Themen, darf es mehrere oberste Punkte geben.\n• Deutsch, Schweizer Rechtschreibung (ss statt ß).";
+const FORMAT = "\n\nAusgabeformat – genau so, in EINEM Codeblock, ohne Einleitung, ohne Fettschrift. Erste Zeile „# Titel“, dann eine verschachtelte Liste mit „- “ und 2 Leerzeichen Einrückung pro Ebene. Notizen (Definitionen, Artikel, Merksätze, Beispiele) stehen direkt unter dem Punkt in Zeilen, die mit „> “ beginnen:\n```\n# Prüfungsschema: Titel\n- I. Tatbestand\n  - 1. Objektiver Tatbestand\n    - a) Tathandlung\n      > Definition …\n      ~ mermaid\n      ~ flowchart LR\n      ~   A[\"Wissen\"] --> C[\"Vorsatz\"]\n      ~   B[\"Willen\"] --> C\n    - b) Erfolg\n  - 2. Subjektiver Tatbestand\n- II. Rechtswidrigkeit\n- III. Schuld\n```";
+const RULES_S = "Regeln:\n• Gliederung wie ein juristisches Prüfungsschema: I., II., III. → 1., 2., 3. → a), b) → aa), bb). Die Nummerierung gehört zum Text des Punkts.\n• Die Punkte selbst sind kurz (Prüfungspunkt/Stichwort). Definitionen, Voraussetzungen, Artikel (z. B. Art. 12 Abs. 2 StGB), Streitstände, Abgrenzungen und kurze Beispiele aus dem Material gehören als Notiz unter den passenden Punkt.\n• Reihenfolge = Prüfungsreihenfolge beim Lösen eines Falls.\n• Nur Inhalte aus dem Material verwenden, nichts erfinden. Organisatorisches, Literatur und Deckblätter weglassen.\n• Enthält das Material mehrere eigenständige Delikte oder Themen, darf es mehrere oberste Punkte geben.\n• Grafiken: Wo eine Grafik das Verständnis deutlich erleichtert (Prüfreihenfolge, Abgrenzung, Formel wie „Wissen + Willen = Vorsatz“, Gegenüberstellung wie „Vorsatzarten“), füge sie direkt unter dem Punkt ein – sparsam, höchstens etwa eine pro 8 Punkte. Grafik-Zeilen beginnen mit „~ “: zuerst „~ mermaid“ (Diagramm in Mermaid-Syntax, flowchart TD oder LR, alle Beschriftungen in Anführungszeichen, z. B. A[\"Text\"], Kanten mit -->|ja|) oder „~ tabelle“ (Markdown-Tabelle mit | ), danach jede Code-Zeile mit „~ “. Kurze Beschriftungen.\n• Deutsch, Schweizer Rechtschreibung (ss statt ß).";
 let pending = null;   // { name, units, gallery, attach, wish }
 function newView(){
   showOnly("sch-new");
@@ -548,7 +704,7 @@ $("schImport").onchange = async () => {
   try{
     const j = JSON.parse(await f.text());
     if(!Array.isArray(j.nodes)) throw 0;
-    const fix = n => ({ id: uid(), t: String(n.t || ""), note: String(n.note || ""), imgs: Array.isArray(n.imgs) ? n.imgs.filter(s => /^data:image\//.test(s)) : [], open: n.open !== false, kids: (n.kids || []).map(fix) });
+    const fix = n => ({ id: uid(), t: String(n.t || ""), note: String(n.note || ""), imgs: Array.isArray(n.imgs) ? n.imgs.filter(s => /^data:image\//.test(s)) : [], gfx: Array.isArray(n.gfx) ? n.gfx.filter(g => g && typeof g.code === "string").map(g => ({ type: g.type === "table" ? "table" : "mermaid", code: g.code })) : [], open: n.open !== false, kids: (n.kids || []).map(fix) });
     create({ title: String(j.title || "Geteiltes Schema"), nodes: j.nodes.map(fix) });
   }catch(e){ alert("Diese Datei ist kein gültiges Schema."); }
   $("schImport").value = "";
