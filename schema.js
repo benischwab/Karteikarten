@@ -93,29 +93,97 @@ function toOutline(d){
 
 /* ---------- Vorlagen ---------- */
 const TEMPLATES = [
-  { name: "Prüfungsschema: Das vollendete vorsätzliche Begehungsdelikt", text:
+  { name: "Prüfungsschema: Das vollendete vorsätzliche Begehungsdelikt (ausführlich, StGB)", text:
 `# Prüfungsschema: Das vollendete vorsätzliche Begehungsdelikt
 - Straftataufbau
+  > Dreistufiger Aufbau: Tatbestandsmässigkeit → Rechtswidrigkeit → Schuld, danach allfällige weitere Strafbarkeitsvoraussetzungen.
+  > Vorlage – bitte mit deinen Vorlesungsunterlagen abgleichen und ergänzen.
 - I. Tatbestand
   - 1. Objektiver Tatbestand
-    - a) Tathandlung
+    - a) Täter
+      > Allgemeindelikt („wer“): jede Person kann Täter sein.
+      > Sonderdelikt: nur Personen mit besonderer Eigenschaft (z. B. Beamter bei Amtsdelikten).
+    - b) Tathandlung
       > Strafrechtlich relevante Handlung? Jedes menschliche Verhalten, das vom Willen beherrscht oder doch wenigstens beherrschbar ist.
-    - b) Erfolg
-    - c) Verursachungszusammenhang
-      - aa) Kausalität
-      - bb) Objektive Zurechnung des Erfolgs
+      > Keine Handlung: reine Reflexbewegungen, Bewegungen im Schlaf oder in Bewusstlosigkeit, Einwirkung unwiderstehlicher physischer Gewalt (vis absoluta).
+      > Die Handlung muss die im Tatbestand beschriebene sein (z. B. „tötet“, „wegnimmt“).
+    - c) Tatobjekt
+      > Mensch oder Sache, an dem bzw. an der die Tat begangen wird (z. B. „einen Menschen“, „eine fremde bewegliche Sache“).
+    - d) Erfolg
+      > Nur bei Erfolgsdelikten: eine von der Handlung gedanklich abtrennbare Veränderung in der Aussenwelt (z. B. Tod, Körperverletzung, Vermögensschaden).
+      > Tätigkeitsdelikte (z. B. falsches Zeugnis) haben keinen Erfolg → Kausalität entfällt.
+      > Verletzungsdelikt vs. Gefährdungsdelikt (konkrete / abstrakte Gefährdung).
+    - e) Verursachungszusammenhang
+      - aa) Natürliche Kausalität
+        > Formel der conditio sine qua non: Ein Verhalten ist kausal, wenn es nicht hinweggedacht werden kann, ohne dass der Erfolg in seiner konkreten Gestalt entfiele.
+        > Mitursächlichkeit genügt; auch eine Ursache unter mehreren ist kausal.
+      - bb) Adäquate Kausalität (Rechtsprechung BGer)
+        > Das Verhalten muss nach dem gewöhnlichen Lauf der Dinge und der allgemeinen Lebenserfahrung geeignet sein, einen Erfolg wie den eingetretenen herbeizuführen oder zu begünstigen.
+        > Unterbrechung des Adäquanzzusammenhangs: wenn eine andere Ursache (Naturereignis, Verhalten des Opfers oder eines Dritten) so aussergewöhnlich ist, dass mit ihr nicht zu rechnen war, und sie das Verhalten des Täters in den Hintergrund drängt.
+      - cc) Objektive Zurechnung des Erfolgs (Lehre)
         - Prüfung objektive Zurechnung
+          > Der Täter hat ein rechtlich missbilligtes Risiko geschaffen (oder erhöht), und genau dieses Risiko hat sich im Erfolg verwirklicht.
         - Grenzen
+          > Erlaubtes Risiko (z. B. Strassenverkehr bei Einhaltung der Regeln).
+          > Risikoverringerung (Täter schwächt eine bestehende Gefahr ab).
+          > Schutzzweck der Norm: Erfolg liegt ausserhalb dessen, was die verletzte Regel verhindern soll.
+          > Eigenverantwortliche Selbstgefährdung des Opfers.
+          > Eigenverantwortliches Dazwischentreten eines Dritten.
         - Fallbeispiele
   - 2. Subjektiver Tatbestand
     - a) Vorsatz
-      > Wissen + Willen = Vorsatz (Art. 12 Abs. 2 StGB)
+      > Art. 12 Abs. 1 StGB: Bestraft wird nur, wer ein Verbrechen oder Vergehen vorsätzlich begeht, ausser das Gesetz bestimme es ausdrücklich anders.
+      > Art. 12 Abs. 2 StGB: Vorsätzlich handelt, wer die Tat mit Wissen und Willen ausführt. Vorsätzlich handelt bereits, wer die Verwirklichung der Tat für möglich hält und in Kauf nimmt.
+      > Wissen (kognitives Element) + Willen (voluntatives Element) = Vorsatz.
+      > Der Vorsatz muss sich auf alle objektiven Tatbestandsmerkmale beziehen und im Zeitpunkt der Tat vorliegen.
       - Vorsatzarten: Überblick
+        > Direkter Vorsatz 1. Grades (Absicht): Es kommt dem Täter gerade auf den Erfolg an.
+        > Direkter Vorsatz 2. Grades (Wissentlichkeit): Der Täter weiss, dass der Erfolg als sichere Folge seines Handelns eintritt.
+        > Eventualvorsatz (Art. 12 Abs. 2 Satz 2): Der Täter hält den Erfolg für möglich und nimmt ihn in Kauf (findet sich damit ab).
       - Abgrenzung Eventualvorsatz – bewusste Fahrlässigkeit
-    - b) (weitere subjektive Tatbestandsmerkmale)
+        > Gemeinsam: Der Täter hält den Erfolg für möglich (Wissensseite gleich).
+        > Eventualvorsatz: nimmt den Erfolg in Kauf.
+        > Bewusste Fahrlässigkeit (Art. 12 Abs. 3): vertraut pflichtwidrig darauf, dass der Erfolg nicht eintreten werde.
+        > Indizien (BGer): Grösse des dem Täter bekannten Risikos, Schwere der Sorgfaltspflichtverletzung, Beweggründe, Art der Tathandlung.
+      - Sachverhaltsirrtum (Art. 13 StGB)
+        > Abs. 1: Wer in einer irrigen Vorstellung über den Sachverhalt handelt, wird zu seinen Gunsten nach dieser Vorstellung beurteilt → Vorsatz entfällt.
+        > Abs. 2: War der Irrtum bei pflichtgemässer Vorsicht vermeidbar, ist Fahrlässigkeit zu prüfen, wenn diese strafbar ist.
+    - b) Weitere subjektive Tatbestandsmerkmale
+      > Nur wenn der Tatbestand sie verlangt, z. B. Bereicherungsabsicht (Diebstahl Art. 139, Betrug Art. 146) oder besondere Beweggründe.
 - II. Rechtswidrigkeit
+  > Die Tatbestandsmässigkeit indiziert die Rechtswidrigkeit. Zu prüfen ist, ob ein Rechtfertigungsgrund eingreift (objektive Voraussetzungen + Handeln in Kenntnis der Rechtfertigungslage).
+  - 1. Gesetzlich erlaubte Handlung (Art. 14 StGB)
+    > Wer handelt, wie es das Gesetz gebietet oder erlaubt, verhält sich rechtmässig (z. B. Festnahme durch Polizei).
+  - 2. Rechtfertigende Notwehr (Art. 15 StGB)
+    - a) Notwehrlage
+      > Ohne Recht angegriffen oder unmittelbar mit einem Angriff bedroht.
+    - b) Notwehrhandlung
+      > Abwehr gegen den Angreifer in einer den Umständen angemessenen Weise (erforderlich und verhältnismässig).
+    - c) Subjektiv: Abwehrwille
+  - 3. Rechtfertigender Notstand (Art. 17 StGB)
+    > Unmittelbare, nicht anders abwendbare Gefahr für ein eigenes oder fremdes Rechtsgut; die Tat ist gerechtfertigt, wenn dadurch höherwertige Interessen gewahrt werden.
+  - 4. Übergesetzliche Rechtfertigungsgründe
+    > Einwilligung des Verletzten, mutmassliche Einwilligung, Wahrung berechtigter Interessen.
+  - 5. Irrtum über die rechtfertigende Sachlage
+    > Putativnotwehr / Putativnotstand: Behandlung nach Art. 13 StGB.
 - III. Schuld
-- IV. ggf. sonstige Strafbarkeitsvoraussetzungen` },
+  - 1. Schuldfähigkeit (Art. 19 StGB)
+    > Abs. 1: Nicht strafbar ist, wer zur Zeit der Tat nicht fähig war, das Unrecht seiner Tat einzusehen oder gemäss dieser Einsicht zu handeln.
+    > Abs. 2: Bei nur teilweiser Fähigkeit → Strafmilderung.
+    > Abs. 4: Keine Anwendung, wenn der Täter den Zustand selbst herbeigeführt hat und die Tat dabei voraussehen konnte (actio libera in causa).
+    > Jugendliche (10 bis 18 Jahre): Jugendstrafgesetz (JStG).
+  - 2. Unrechtsbewusstsein – Verbotsirrtum (Art. 21 StGB)
+    > Wer nicht weiss und nicht wissen kann, dass er sich rechtswidrig verhält, handelt nicht schuldhaft (unvermeidbarer Irrtum). War der Irrtum vermeidbar → Strafmilderung.
+  - 3. Entschuldigungsgründe
+    - a) Entschuldbarer Notwehrexzess (Art. 16 StGB)
+      > Abs. 1: Überschreitet der Abwehrende die Grenzen der Notwehr → Strafmilderung.
+      > Abs. 2: Überschreitet er sie in entschuldbarer Aufregung oder Bestürzung über den Angriff → handelt nicht schuldhaft.
+    - b) Entschuldbarer Notstand (Art. 18 StGB)
+      > Abs. 1: Konnte dem Täter zugemutet werden, das gefährdete Gut preiszugeben → Strafmilderung.
+      > Abs. 2: War dies nicht zumutbar → handelt nicht schuldhaft.
+    - c) Übergesetzlicher entschuldigender Notstand
+- IV. Ggf. sonstige Strafbarkeitsvoraussetzungen
+  > Strafantrag bei Antragsdelikten (Art. 30 ff. StGB), Verjährung (Art. 97 ff. StGB), objektive Strafbarkeitsbedingungen, persönliche Strafausschliessungs- oder Strafaufhebungsgründe.` },
   { name: "Grundgerüst: Tatbestand – Rechtswidrigkeit – Schuld", text:
 `# Neues Prüfungsschema
 - I. Tatbestand
@@ -392,10 +460,10 @@ function improve(){
 /* ---------- Neues Schema ---------- */
 const FORMAT = "\n\nAusgabeformat – genau so, in EINEM Codeblock, ohne Einleitung, ohne Fettschrift. Erste Zeile „# Titel“, dann eine verschachtelte Liste mit „- “ und 2 Leerzeichen Einrückung pro Ebene. Notizen (Definitionen, Artikel, Merksätze, Beispiele) stehen direkt unter dem Punkt in Zeilen, die mit „> “ beginnen:\n```\n# Prüfungsschema: Titel\n- I. Tatbestand\n  - 1. Objektiver Tatbestand\n    - a) Tathandlung\n      > Definition …\n    - b) Erfolg\n  - 2. Subjektiver Tatbestand\n- II. Rechtswidrigkeit\n- III. Schuld\n```";
 const RULES_S = "Regeln:\n• Gliederung wie ein juristisches Prüfungsschema: I., II., III. → 1., 2., 3. → a), b) → aa), bb). Die Nummerierung gehört zum Text des Punkts.\n• Die Punkte selbst sind kurz (Prüfungspunkt/Stichwort). Definitionen, Voraussetzungen, Artikel (z. B. Art. 12 Abs. 2 StGB), Streitstände, Abgrenzungen und kurze Beispiele aus dem Material gehören als Notiz unter den passenden Punkt.\n• Reihenfolge = Prüfungsreihenfolge beim Lösen eines Falls.\n• Nur Inhalte aus dem Material verwenden, nichts erfinden. Organisatorisches, Literatur und Deckblätter weglassen.\n• Enthält das Material mehrere eigenständige Delikte oder Themen, darf es mehrere oberste Punkte geben.\n• Deutsch, Schweizer Rechtschreibung (ss statt ß).";
-let pending = null;   // { name, units, gallery, attach }
+let pending = null;   // { name, units, gallery, attach, wish }
 function newView(){
   showOnly("sch-new");
-  $("schStatus").textContent = ""; $("schChat").hidden = true; $("schFile").value = "";
+  $("schStatus").textContent = ""; $("schChat").hidden = true; $("schFile").value = ""; $("schWish").value = "";
   const t = $("schTpls"); t.innerHTML = "";
   TEMPLATES.forEach(tp => {
     const b = document.createElement("button"); b.className = "deck"; b.innerHTML = '<div class="t"></div>';
@@ -407,7 +475,14 @@ function newView(){
 async function readFiles(){
   const files = [...$("schFile").files], st = $("schStatus");
   st.className = "status";
-  if(!files.length){ st.textContent = "Bitte zuerst eine Datei oder Bilder wählen."; return; }
+  const wish = $("schWish").value.trim();
+  if(!files.length){
+    if(!wish){ st.textContent = "Bitte eine Datei/Bilder wählen oder in Stichworten beschreiben, was du brauchst."; $("schWish").focus(); return; }
+    pending = { name: "", units: [], gallery: [], attach: false, wish };
+    st.className = "status";
+    st.innerHTML = "<b>Hinweis:</b> Ohne Datei baut Claude das Schema aus seinem eigenen Wissen – es kann vom Aufbau in deiner Vorlesung abweichen. Bitte mit deinen Unterlagen abgleichen.";
+    showSteps(); return;
+  }
   $("schRead").disabled = true; st.textContent = "Lese …";
   try{
     let units = [], gallery = [], images = 0;
@@ -424,18 +499,22 @@ async function readFiles(){
     }
     const withText = units.filter(u => (u.title + u.body).trim());
     const attach = images > 0 || withText.length < units.length * 0.7 || !withText.length;
-    pending = { name: files.map(f => f.name).join(", "), units: withText, gallery: gallery.slice(0, 40), attach };
+    pending = { name: files.map(f => f.name).join(", "), units: withText, gallery: gallery.slice(0, 40), attach, wish };
     st.className = "status okc";
-    st.textContent = (units.length ? units.length + " Folien/Seiten gelesen" + (withText.length < units.length ? ", davon " + withText.length + " mit Text" : "") : images + " Bild(er)") + (gallery.length ? " · " + Math.min(gallery.length, 40) + " Bilder für das Schema gesammelt" : "") + ".";
+    st.textContent = (units.length ? units.length + (/^Seite|^Folie/.test(units[0].label) ? " Folien/Seiten" : " Abschnitte") + " gelesen" + (withText.length < units.length ? ", davon " + withText.length + " mit Text" : "") : images + " Bild(er)") + (gallery.length ? " · " + Math.min(gallery.length, 40) + " Bilder für das Schema gesammelt" : "") + ".";
     showSteps();
   }catch(e){ st.className = "status err"; st.textContent = e.message; }
   finally{ $("schRead").disabled = false; }
 }
 function schemaPrompt(){
+  const wish = pending.wish ? "\n\nWünsche zum Schema (bitte berücksichtigen): " + pending.wish : "";
+  if(!pending.name) return "Erstelle ein übersichtliches, aufklappbares Prüfungsschema für das Schweizer Rechtsstudium zu folgendem Thema: " + pending.wish +
+    "\n\nDas Schema soll so aufgebaut sein, dass man damit einen Fall Schritt für Schritt prüfen und den Stoff wiederholen kann.\n\n" +
+    RULES_S.replace(/\n• Nur Inhalte aus dem Material[^\n]*/, "\n• Grundlage: Schweizer Recht (Gesetz, Rechtsprechung des Bundesgerichts, herrschende Lehre). Artikel nur angeben, wenn du sicher bist; Streitfragen kurz als Notiz erwähnen. Nichts erfinden.").replace("aus dem Material ", "") + FORMAT;
   const head = "Erstelle aus dem folgenden Material ein übersichtliches, aufklappbares Prüfungsschema für das Schweizer Rechtsstudium – so, dass man damit einen Fall Schritt für Schritt prüfen und den Stoff wiederholen kann.\n\n" + RULES_S + FORMAT;
-  if(pending.attach) return head + "\n\nDas Material ist angehängt (" + pending.name + "). Lies auch Text in Bildern, Tabellen und Grafiken." +
+  if(pending.attach) return head + wish + "\n\nDas Material ist angehängt (" + pending.name + "). Lies auch Text in Bildern, Tabellen und Grafiken." +
     (pending.units.length ? "\n\nZusätzlich der lesbare Text daraus:\n\n" + pending.units.map(u => "### " + u.label + (u.title ? ": " + u.title : "") + "\n" + u.body).join("\n\n") : "");
-  return head + "\n\nMaterial (" + pending.name + "):\n\n" + pending.units.map(u => "### " + u.label + (u.title ? ": " + u.title : "") + "\n" + u.body).join("\n\n");
+  return head + wish + "\n\nMaterial (" + pending.name + "):\n\n" + pending.units.map(u => "### " + u.label + (u.title ? ": " + u.title : "") + "\n" + u.body).join("\n\n");
 }
 function showSteps(){
   const box = $("schChat"); box.hidden = false; box.innerHTML = "";

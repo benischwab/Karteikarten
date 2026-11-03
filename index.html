@@ -311,10 +311,13 @@ summary{cursor:pointer;font-weight:600}
   <header><button id="schNewBack">← Schemas</button></header>
   <h1>Neues Schema</h1>
   <div class="box">
-    <h2>Aus Datei oder Bildern (gratis mit Claude-Chat)</h2>
-    <p>PowerPoint, PDF, Word oder Fotos/Screenshots von Folien. Claude erstellt daraus ein Prüfungsschema, das du danach frei bearbeiten kannst.</p>
+    <h2>Mit Claude erstellen (gratis)</h2>
+    <p>Wähle eine Datei (PowerPoint, PDF, Word, Fotos/Screenshots von Folien) <b>und/oder</b> beschreibe in Stichworten, was du brauchst. Danach kannst du das Schema frei bearbeiten.</p>
+    <label for="schFile">Datei oder Bilder (optional)</label>
     <input type="file" id="schFile" accept=".pptx,.pdf,.docx,.txt,.md,image/*" multiple>
-    <div class="row" style="margin-top:8px"><button id="schRead">Datei lesen</button></div>
+    <label for="schWish">Stichworte (optional)</label>
+    <textarea id="schWish" style="min-height:70px" placeholder="z. B. „Notwehr Art. 15 StGB mit Notwehrexzess und Putativnotwehr“ oder „nur Rechtswidrigkeit, mit Fallbeispielen“"></textarea>
+    <div class="row" style="margin-top:8px"><button id="schRead">Weiter</button></div>
     <p id="schStatus" class="status"></p>
     <div id="schChat" hidden></div>
   </div>
