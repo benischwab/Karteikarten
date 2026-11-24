@@ -1,0 +1,35 @@
+name: Dateiliste aktualisieren
+
+# Wenn Karten-Dateien (.txt) in themen/ hinzukommen, sich ändern oder gelöscht werden,
+# wird themen/index.json automatisch neu erzeugt. Die Seite nutzt diese Liste,
+# falls GitHub die direkte Abfrage gerade blockiert.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "themen/**/*.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node scripts/make-index.js
+      - name: Änderung speichern
+        run: |
+          if git diff --quiet -- themen/index.json; then
+            echo "index.json ist schon aktuell"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add themen/index.json
+            git commit -m "themen/index.json aktualisiert"
+            git push
+          fi
