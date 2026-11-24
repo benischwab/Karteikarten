@@ -53,6 +53,8 @@ textarea{min-height:110px;resize:vertical}
 .pend button{min-width:0;flex:0 0 auto;padding:2px 8px;margin-left:6px;font-size:13px}
 #eInfo a{color:inherit}
 .intro{font:14px system-ui,sans-serif;color:var(--muted);margin:-8px 0 14px}
+#q{margin-bottom:16px}
+#hits .deck .t{font-weight:600}
 .part{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:10px 0;background:var(--card)}
 .part b{font:600 14px system-ui,sans-serif}
 .part textarea{min-height:70px;margin-top:8px}
@@ -187,7 +189,17 @@ summary{cursor:pointer;font-weight:600}
     <button id="btnNew" class="deck all" style="margin:0"><span class="t">+ Neue Karten / Datei importieren</span></button>
     <button id="btnNewDir" class="deck all" style="margin:0;flex:0 1 40%"><span class="t">+ Neuer Ordner</span></button>
   </div>
+  <input id="q" type="search" placeholder="Alle Karten durchsuchen …" autocomplete="off" aria-label="Alle Karten durchsuchen">
+  <div id="hits" hidden></div>
   <div id="list"><p class="msg">Lade Themen …</p></div>
+  <details id="backup" class="box">
+    <summary>Fortschritt und eigene Karten sichern</summary>
+    <p class="hint" style="text-align:left">Dein Fortschritt (Stufen) und deine eigenen Karten liegen nur in diesem Browser. Speichere sie als Datei, um sie auf einem anderen Gerät zu laden oder zu sichern.</p>
+    <div class="row"><button id="bkSave">Sicherung speichern (Datei)</button></div>
+    <label for="bkFile">Sicherung laden</label>
+    <input type="file" id="bkFile" accept=".json,application/json">
+    <p id="bkInfo" class="hint" style="text-align:left"></p>
+  </details>
 </section>
 
 <section id="setv" hidden>
@@ -389,6 +401,31 @@ function parse(text, path){
 }
 
 /* ---------- Ordner und Dateien finden ---------- */
+// Dateiliste: 1. GitHub (eine einzige Anfrage, wird zwischengespeichert)
+//             2. sonst themen/index.json (wird von der GitHub-Action aktuell gehalten) + Zwischenspeicher
+const KEY_LIST = "karten-liste-v1";
+let listSource = "live";   // "live" | "ersatz"
+// ["Ordner/datei.txt", "datei.txt"] -> { "Ordner": ["datei.txt"], "": [...] }  (nur eine Ordner-Ebene)
+function mapFromPaths(paths){
+  const map = {};
+  paths.forEach(p => {
+    if(!/\.txt$/i.test(p)) return;
+    const parts = p.split("/");
+    if(parts.length > 2) return;
+    const d = parts.length === 2 ? parts[0] : "";
+    (map[d] = map[d] || []).push(parts[parts.length - 1]);
+  });
+  return Object.keys(map).length ? map : null;
+}
+function mergeMaps(...maps){
+  const out = {};
+  maps.filter(m => m && typeof m === "object").forEach(m => Object.keys(m).forEach(d => {
+    if(!Array.isArray(m[d])) return;
+    out[d] = out[d] || [];
+    m[d].forEach(f => { if(typeof f === "string" && !out[d].includes(f)) out[d].push(f); });
+  }));
+  return Object.keys(out).length ? out : null;
+}
 async function listViaGitHub(){
   try{
     const h = location.hostname;
@@ -396,29 +433,28 @@ async function listViaGitHub(){
     const owner = h.split(".")[0];
     let repo = location.pathname.split("/").filter(Boolean)[0];
     if(!repo || /\.html?$/i.test(repo)) repo = h;
-    const top = await (await fetch("https://api.github.com/repos/" + owner + "/" + repo + "/contents/themen")).json();
-    if(!Array.isArray(top)) return null;
-    const map = {};
-    const add = (d, f) => { (map[d] = map[d] || []).push(f); };
-    await Promise.all(top.map(async e => {
-      if(e.type === "file" && /\.txt$/i.test(e.name)) add("", e.name);
-      else if(e.type === "dir"){
-        const sub = await (await fetch(e.url)).json();
-        if(Array.isArray(sub)) sub.forEach(f => { if(f.type === "file" && /\.txt$/i.test(f.name)) add(e.name, f.name); });
-      }
-    }));
-    return Object.keys(map).length ? map : null;
+    const r = await fetch("https://api.github.com/repos/" + owner + "/" + repo + "/git/trees/HEAD?recursive=1");
+    if(!r.ok) return null;
+    const j = await r.json();
+    if(!j || !Array.isArray(j.tree)) return null;
+    return mapFromPaths(j.tree.filter(e => e.type === "blob" && e.path.startsWith("themen/")).map(e => e.path.slice(7)));
   }catch(e){ return null; }
 }
 async function listViaIndex(){
   try{
-    const r = await fetch(BASE + "index.json");
+    const r = await fetch(BASE + "index.json", { cache: "no-cache" });
     return r.ok ? await r.json() : null;
   }catch(e){ return null; }
 }
+async function findFiles(){
+  const live = await listViaGitHub();
+  if(live){ safeSet(KEY_LIST, live); listSource = "live"; return live; }
+  listSource = "ersatz";
+  return mergeMaps(await listViaIndex(), safeGet(KEY_LIST)) || {};
+}
 
 async function loadAll(){
-  const map = (await listViaGitHub()) || (await listViaIndex()) || {};
+  const map = await findFiles();
   const out = [];
   for(const name of Object.keys(map).sort((a,b) => a.localeCompare(b, "de", {numeric:true}))){
     const files = map[name].slice().sort((a,b) => a.localeCompare(b, "de", {numeric:true}));
@@ -521,6 +557,12 @@ function renderHome(){
     }
     list.appendChild(wrap);
   });
+  if(listSource === "ersatz" && location.hostname.endsWith(".github.io")){
+    const n = document.createElement("p");
+    n.className = "hint";
+    n.textContent = "Hinweis: GitHub hat die Abfrage gerade begrenzt. Die Liste stammt aus dem Zwischenspeicher. Neue Sets erscheinen später.";
+    list.appendChild(n);
+  }
 }
 const VIEWS = ["start", "home", "setv", "learn", "edit", "sedit", "sch-list", "sch-new", "sch-doc"];
 const showOnly = id => { VIEWS.forEach(x => { $(x).hidden = x !== id; }); window.scrollTo(0, 0); };
@@ -1301,6 +1343,69 @@ $("eDir").addEventListener("input", fillSets);
 
 /* ---------- Startseite & Navigation (#karten, #schema) ---------- */
 let loaded = null;
+/* ---------- Suche über alle Karten ---------- */
+function renderHits(){
+  const q = $("q").value.trim().toLowerCase(), box = $("hits");
+  if(q.length < 2){ box.hidden = true; $("list").hidden = false; box.innerHTML = ""; return; }
+  const hits = [];
+  folders.forEach(fo => fo.decks.forEach(d => d.cards.forEach(c => {
+    if((c.f + " " + c.a).toLowerCase().includes(q)) hits.push({ c, set: fo.name + " › " + d.name });
+  })));
+  $("list").hidden = true; box.hidden = false; box.innerHTML = "";
+  const head = document.createElement("p");
+  head.className = "hint"; head.style.textAlign = "left";
+  head.textContent = hits.length ? hits.length + " Treffer" : "Keine Treffer für „" + $("q").value.trim() + "“.";
+  box.appendChild(head);
+  if(!hits.length) return;
+  const all = document.createElement("button");
+  all.className = "deck all"; all.innerHTML = '<span class="t"></span>';
+  all.firstChild.textContent = "Diese " + hits.length + " Karten lernen";
+  all.onclick = () => openView("Suche: " + $("q").value.trim(), hits.map(h => h.c), null);
+  box.appendChild(all);
+  hits.slice(0, 30).forEach(h => {
+    const b = document.createElement("button");
+    b.className = "deck"; b.innerHTML = '<div class="t"></div><div class="m"></div>';
+    b.querySelector(".t").textContent = h.c.f.replace(/\s+/g, " ").slice(0, 110) + (h.c.f.length > 110 ? " …" : "");
+    b.querySelector(".m").textContent = h.set;
+    b.onclick = () => openView(h.set, [h.c], null);
+    box.appendChild(b);
+  });
+  if(hits.length > 30){
+    const m = document.createElement("p"); m.className = "hint";
+    m.textContent = "Es werden die ersten 30 angezeigt. „Diese Karten lernen“ enthält alle."; box.appendChild(m);
+  }
+}
+$("q").addEventListener("input", renderHits);
+
+/* ---------- Sicherung: Fortschritt + eigene Karten als Datei ---------- */
+const bkInfo = t => { $("bkInfo").textContent = t; };
+$("bkSave").onclick = () => {
+  loadLevels();
+  const data = { app: "jus-lernhilfe", v: 1, datum: new Date().toISOString(), stufen: lvl, eigene: safeGet(KEY_LOCAL) || {} };
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: "application/json" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = "jus-lernhilfe-sicherung-" + new Date().toISOString().slice(0, 10) + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  bkInfo("Sicherung gespeichert (" + Object.keys(lvl).length + " Karten mit Stufe, " + Object.keys(data.eigene).length + " eigene Sets).");
+};
+$("bkFile").onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    const d = JSON.parse(await f.text());
+    if(!d || d.app !== "jus-lernhilfe" || typeof d.stufen !== "object" || typeof d.eigene !== "object") throw new Error("falsches Format");
+    loadLevels();
+    let nl = 0, ns = 0;
+    Object.keys(d.stufen || {}).forEach(k => { const v = d.stufen[k]; if(v === 1 || v === 2 || v === 3){ lvl[k] = v; nl++; } });
+    const loc = safeGet(KEY_LOCAL) || {};
+    Object.keys(d.eigene || {}).forEach(id => { if(typeof d.eigene[id] === "string" && id.split("/").length === 2){ loc[id] = d.eigene[id]; ns++; } });
+    safeSet(KEY_LVL, lvl); safeSet(KEY_LOCAL, loc);
+    rebuild(); renderHome(); renderHits();
+    bkInfo("Geladen: " + nl + " Stufen und " + ns + " eigene Sets. Gleiche Karten wurden mit der Sicherung überschrieben, alles andere blieb erhalten.");
+  }catch(err){ bkInfo("Diese Datei ist keine gültige Sicherung."); }
+  e.target.value = "";
+};
+
 function route(){
   const h = location.hash.replace("#", "");
   if(h === "karten"){ showOnly("home"); (loaded = loaded || loadAll()).then(renderHome); }
